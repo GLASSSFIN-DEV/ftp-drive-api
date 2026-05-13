@@ -1,8 +1,6 @@
 import { IsString } from "class-validator";
 
 export class LoginDto {
-    @IsString({
-        message: ''
-    })
+    @IsString()
     username!: string;
 }

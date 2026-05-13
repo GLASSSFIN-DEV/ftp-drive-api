@@ -23,6 +23,11 @@ enum SubmissionAction {
   REJECTED
 }
 
+enum SharePermission {
+  READ_ONLY
+  READ_WRITE
+}
+
 model Option {
   id        String   @id @default(uuid())
   key       String
@@ -69,7 +74,7 @@ model Submission {
   id               String           @id @default(uuid())
   accountId        String?
   status           SubmissionAction @default(WAITING)
-  verificationCode String
+  verificationCode String           @unique
   expiredAt        DateTime
   actionBy         String?
   actionJson       Json?
@@ -124,22 +129,26 @@ model File {
 }
 
 model FolderSharing {
-  id           String       @id @default(uuid())
-  folderId     String
-  toAccountId  String
-  expiredAt    DateTime?
-  recordStatus RecordStatus @default(NOT_ACTIVE)
+  id            String          @id @default(uuid())
+  folderId      String
+  toAccountId   String
+  expiredAt     DateTime?
+  permission    SharePermission @default(READ_ONLY)
+  generatedLink String
+  recordStatus  RecordStatus    @default(NOT_ACTIVE)
 
   folder  Folder  @relation(fields: [folderId], references: [id])
   account Account @relation("folderSharingAccounts", fields: [toAccountId], references: [id])
 }
 
 model FileSharing {
-  id           String       @id @default(uuid())
-  fileId       String
-  toAccountId  String
-  expiredAt    DateTime?
-  recordStatus RecordStatus @default(NOT_ACTIVE)
+  id            String          @id @default(uuid())
+  fileId        String
+  toAccountId   String
+  expiredAt     DateTime?
+  permission    SharePermission @default(READ_ONLY)
+  generatedLink String
+  recordStatus  RecordStatus    @default(NOT_ACTIVE)
 
   file    Folder  @relation(fields: [fileId], references: [id])
   account Account @relation("fileSharingAccounts", fields: [toAccountId], references: [id])
