@@ -37,11 +37,12 @@ model Account {
   fullname     String?
   email        String?
   provider     String
-  rbac         String
+  rbacId       String
   createdAt    DateTime     @default(now())
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   directorate    Diretorate      @relation(fields: [dirId], references: [id])
+  rbac           Rbac            @relation(fields: [rbacId], references: [id])
   directorates   Diretorate[]    @relation("dirAccounts")
   submissions    Submission[]    @relation("subAccounts")
   rbacs          Rbac[]          @relation("rbacAccounts")
@@ -81,12 +82,14 @@ model Submission {
 
 model Rbac {
   id           String       @id @default(uuid())
+  name         String
   value        Json?
   accountId    String?
   createdAt    DateTime     @default(now())
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
-  account Account? @relation("rbacAccounts", fields: [accountId], references: [id])
+  account  Account?  @relation("rbacAccounts", fields: [accountId], references: [id])
+  accounts Account[]
 }
 
 model Folder {
