@@ -1,0 +1,20 @@
+{
+  "name": "hono",
+  "type": "module",
+  "dependencies": {
+    "@prisma/client": "^7.8.0",
+    "basic-ftp": "^6.0.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "dotenv": "^17.4.2",
+    "envalid": "^8.1.1",
+    "hono": "^4.12.18",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "prisma": "^7.8.0",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RecordStatus {
+  ACTIVE
+  NOT_ACTIVE
+}
+
+enum SubmissionAction {
+  WAITING
+  APPROVED
+  REJECTED
+}
+
+model Option {
+  id        String   @id @default(uuid())
+  key       String
+  json      Json?
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id           String       @id @default(uuid())
+  dirId        String
+  username     String
+  fullname     String?
+  email        String?
+  provider     String
+  rbac         String
+  createdAt    DateTime     @default(now())
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  directorate    Diretorate      @relation(fields: [dirId], references: [id])
+  directorates   Diretorate[]    @relation("dirAccounts")
+  submissions    Submission[]    @relation("subAccounts")
+  rbacs          Rbac[]          @relation("rbacAccounts")
+  subsActionBy   Submission[]    @relation("subActionByAccounts")
+  folders        Folder[]        @relation("folderAccounts")
+  files          File[]          @relation("fileAccounts")
+  folderSharings FolderSharing[] @relation("folderSharingAccounts")
+  fileSharings   FileSharing[]   @relation("fileSharingAccounts")
+  traces         Trace[]         @relation("traceAccounts")
+}
+
+model Diretorate {
+  id           String       @id @default(uuid())
+  name         String
+  createdAt    DateTime     @default(now())
+  accountId    String?
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  accounts Account[]
+  account  Account?  @relation("dirAccounts", fields: [accountId], references: [id])
+}
+
+model Submission {
+  id               String           @id @default(uuid())
+  accountId        String?
+  status           SubmissionAction @default(WAITING)
+  verificationCode String
+  expiredAt        DateTime
+  actionBy         String?
+  actionJson       Json?
+  actionAt         DateTime?
+  createdAt        DateTime         @default(now())
+
+  account         Account? @relation("subAccounts", fields: [accountId], references: [id])
+  accountActionBy Account? @relation("subActionByAccounts", fields: [actionBy], references: [id])
+}
+
+model Rbac {
+  id           String       @id @default(uuid())
+  value        Json?
+  accountId    String?
+  createdAt    DateTime     @default(now())
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  account Account? @relation("rbacAccounts", fields: [accountId], references: [id])
+}
+
+model Folder {
+  id           String       @id @default(uuid())
+  parentId     String?
+  accountId    String
+  folderName   String
+  createdAt    DateTime     @default(now())
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  parent         Folder?         @relation("children", fields: [parentId], references: [id])
+  folders        Folder[]        @relation("children")
+  account        Account         @relation("folderAccounts", fields: [accountId], references: [id])
+  files          File[]
+  folderSharings FolderSharing[]
+  fileSharings   FileSharing[]
+}
+
+model File {
+  id           String       @id @default(uuid())
+  folderId     String
+  fileName     String
+  fileHash     String
+  fileSize     Int
+  fileType     String
+  createdAt    DateTime     @default(now())
+  accountId    String
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  account Account @relation("fileAccounts", fields: [accountId], references: [id])
+  folder  Folder  @relation(fields: [folderId], references: [id])
+}
+
+model FolderSharing {
+  id           String       @id @default(uuid())
+  folderId     String
+  toAccountId  String
+  expiredAt    DateTime?
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  folder  Folder  @relation(fields: [folderId], references: [id])
+  account Account @relation("folderSharingAccounts", fields: [toAccountId], references: [id])
+}
+
+model FileSharing {
+  id           String       @id @default(uuid())
+  fileId       String
+  toAccountId  String
+  expiredAt    DateTime?
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+
+  file    Folder  @relation(fields: [fileId], references: [id])
+  account Account @relation("fileSharingAccounts", fields: [toAccountId], references: [id])
+}
+
+model Trace {
+  id             String   @id
+  accountId      String?
+  url            String
+  method         String
+  status         Int
+  responseTimeMs Int
+  createdAt      DateTime @default(now())
+
+  account Account? @relation("traceAccounts", fields: [accountId], references: [id])
+}
+
+model TraceSpan {
+  id         String   @id
+  traceId    String
+  json       Json
+  context    String
+  durationMs Int
+  createdAt  DateTime @default(now())
+}
