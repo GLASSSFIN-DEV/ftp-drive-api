@@ -2,7 +2,7 @@ import type { Context } from 'hono'
 import { HttpException } from '@/common/http-exception.js'
 import { ContentfulStatusCode } from 'hono/utils/http-status'
 
-export const errorHandler = (
+export const errorHandler = async (
   err: Error,
   c: Context
 ) => {

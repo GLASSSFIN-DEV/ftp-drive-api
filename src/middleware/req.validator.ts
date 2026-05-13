@@ -11,6 +11,7 @@ import {
 
 import logger from '@/lib/logger.js'
 import { HttpException } from '@/common/http-exception.js'
+import prismaProxy from '@/lib/prisma'
 
 export default class RequestValidator {
   static validate = <T>(
@@ -32,7 +33,15 @@ export default class RequestValidator {
 
         if (!errors.length) {
           c.set('validatedBody', convertedObject)
-
+          await prismaProxy.traceSpan.create({
+            data: {
+              traceId: c.get('traceId'),
+              json: body,
+              context: `[body]`,
+              durationMs: 0,
+            }
+          })
+          
           await next()
           return
         }
@@ -97,8 +106,6 @@ function getAllConstraintKeys(
   }
 
   traverse(jsonObject)
-
   keys = [...new Set(keys)]
-
   return keys
 }

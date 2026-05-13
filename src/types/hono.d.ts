@@ -14,7 +14,8 @@ export interface IAccount {
 declare module 'hono' {
     interface ContextVariableMap {
         account: IAccount;
-        validatedBody: unknown
+        validatedBody: unknown;
+        traceId: string;
     }
 }
 

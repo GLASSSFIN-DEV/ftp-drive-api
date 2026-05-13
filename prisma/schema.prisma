@@ -186,8 +186,8 @@ model Trace {
 }
 
 model TraceSpan {
-  id         String   @id
-  traceId    String
+  id         String   @id @default(uuid())
+  traceId    String?
   json       Json
   context    String
   durationMs Int
