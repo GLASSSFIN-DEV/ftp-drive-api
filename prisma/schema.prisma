@@ -44,6 +44,7 @@ model Account {
   provider     String
   rbacId       String
   createdAt    DateTime     @default(now())
+  updatedAt    DateTime
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   directorate    Diretorate      @relation(fields: [dirId], references: [id])
@@ -63,6 +64,7 @@ model Diretorate {
   id           String       @id @default(uuid())
   name         String
   createdAt    DateTime     @default(now())
+  updatedAt    DateTime
   accountId    String?
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
@@ -91,6 +93,7 @@ model Rbac {
   value        Json?
   accountId    String?
   createdAt    DateTime     @default(now())
+  updatedAt    DateTime
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   account  Account?  @relation("rbacAccounts", fields: [accountId], references: [id])
@@ -103,6 +106,7 @@ model Folder {
   accountId    String
   folderName   String
   createdAt    DateTime     @default(now())
+  updatedAt    DateTime
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   parent         Folder?         @relation("children", fields: [parentId], references: [id])
@@ -121,6 +125,7 @@ model File {
   fileSize     Int
   fileType     String
   createdAt    DateTime     @default(now())
+  updatedAt    DateTime
   accountId    String
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
@@ -135,6 +140,7 @@ model FolderSharing {
   expiredAt     DateTime?
   permission    SharePermission @default(READ_ONLY)
   generatedLink String
+  createdAt     DateTime        @default(now())
   recordStatus  RecordStatus    @default(NOT_ACTIVE)
 
   folder  Folder  @relation(fields: [folderId], references: [id])
@@ -148,6 +154,7 @@ model FileSharing {
   expiredAt     DateTime?
   permission    SharePermission @default(READ_ONLY)
   generatedLink String
+  createdAt     DateTime        @default(now())
   recordStatus  RecordStatus    @default(NOT_ACTIVE)
 
   file    Folder  @relation(fields: [fileId], references: [id])
