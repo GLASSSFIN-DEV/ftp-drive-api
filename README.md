@@ -50,3 +50,15 @@ vc deploy
 │    Database will be deleted on 5/14/2026, 10:25:15 PM if not claimed.
 │
 └  Done!
+
+
+RULE:
+1. ada 3 ftp service, capsulated by IP ADDRESS or anything
+2. tiap kali upload file akan simpan aktualnya ke FTP
+3. delete artinya hard-delete
+4. bisa upload seperti sharepoint, select banyak folder dan akan ke create folder dkk nya sampe level paling bawah
+5. login by gmail, jd ga maintain password dan rbac
+6. enkripsi komunikasi ke ftp
+7. kasih chmod ke file or folder yg diupload sesuai dengan user login
+8. folder sharing impact bottom top
+9. file sharing impact to top
