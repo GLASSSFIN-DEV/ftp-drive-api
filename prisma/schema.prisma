@@ -58,6 +58,18 @@ model Account {
   folderSharings FolderSharing[] @relation("folderSharingAccounts")
   fileSharings   FileSharing[]   @relation("fileSharingAccounts")
   traces         Trace[]         @relation("traceAccounts")
+  sessions       Session[]       @relation("sessionAccount")
+}
+
+model Session {
+  id           String       @id @default(uuid())
+  accountId    String
+  appCode      String       @default("main_app")
+  jwtHash      String
+  recordStatus RecordStatus @default(NOT_ACTIVE)
+  createdAt    DateTime     @default(now())
+
+  account Account @relation("sessionAccount", fields: [accountId], references: [id])
 }
 
 model Diretorate {
