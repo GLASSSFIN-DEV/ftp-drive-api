@@ -1,5 +1,6 @@
 import { HttpException } from "@/common/http-exception";
 import { FileSharingNewDto } from "@/dto/file-share.dto";
+import { FolderSharingNewDto } from "@/dto/folder-share.dto";
 import { SharePermission } from "@/generated/prisma/enums";
 import prismaProxy from "@/lib/prisma";
 import { IOkResponse } from "@/types/common";
@@ -7,42 +8,41 @@ import { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { v7 } from 'uuid';
 
-interface IFileSharingObj {
+interface IFolderSharingObj {
     account: {
         username: string;
         fullname: string | null;
     };
-    file: {
-        folder: {
-            folderName: string;
-        };
-        folderId: string;
-        fileName: string;
+    folder: {
+        folderName: string;
+        files: {
+            fileName: string;
+        }[];
     };
     id: string;
+    folderId: string;
     toAccountId: string;
     permission: SharePermission;
-    fileId: string;
 }
 
-export interface IRepositoryFileSharing {
-    fileSharingNew(c: Context): Promise<IOkResponse>;
-    fileSharingDrop(c: Context): Promise<IOkResponse>;
-    get(c: Context): Promise<IOkResponse<IFileSharingObj | null>>;
+export interface IRepositoryFolderSharing {
+    folderSharingNew(c: Context): Promise<IOkResponse>;
+    folderSharingDrop(c: Context): Promise<IOkResponse>;
+    get(c: Context): Promise<IOkResponse<IFolderSharingObj | null>>;
 }
 
-export class RepositoryFileSharing implements IRepositoryFileSharing {
+export class RepositoryFolderSharing implements IRepositoryFolderSharing {
     /**
      * 
      * @param c 
      */
-    async fileSharingNew(c: Context): Promise<IOkResponse> {
-        const body = c.get('validatedBody') as FileSharingNewDto
+    async folderSharingNew(c: Context): Promise<IOkResponse> {
+        const body = c.get('validatedBody') as FolderSharingNewDto
         const account = c.get('account')
 
-        const findFile = await prismaProxy.file.findFirst({ where: { id: body.fileId, accountId: account.id } })
+        const findFolder = await prismaProxy.folder.findFirst({ where: { id: body.folderId, accountId: account.id } })
         const findAccount = await prismaProxy.account.findFirst({ where: { id: body.toAccountId } })
-        const exist = await prismaProxy.fileSharing.findFirst({ where: { fileId: body.fileId, toAccountId: body.toAccountId } })
+        const exist = await prismaProxy.folderSharing.findFirst({ where: { fileId: body.folderId, toAccountId: body.toAccountId } })
 
         if (exist && exist.permission === body.permission) throw new HttpException({
             errCode: 'SHARE_NOT_IMPLEMENTED',
@@ -50,7 +50,7 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
             messages: ['Already sharing with permission ', body.permission]
         })
 
-        if(!findFile)
+        if(!findFolder)
             throw new HttpException({
                 errCode: 'NOT_FOUND',
                 statusCode: StatusCodes.NOT_FOUND,
@@ -66,9 +66,9 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
 
         const link = `code=${v7()}`
         await prismaProxy.$transaction(async (tx) => {
-            await tx.fileSharing.create({
+            await tx.folderSharing.create({
                 data: {
-                    fileId: body.fileId,
+                    folderId: body.folderId,
                     toAccountId: body.toAccountId,
                     permission: body.permission,
                     expiredAt: body.expiredAt,
@@ -77,7 +77,7 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
                 }
             })
 
-            if (exist) await tx.fileSharing.delete({ where: { id: exist.id } })
+            if (exist) await tx.folderSharing.delete({ where: { id: exist.id } })
         })
 
         return {
@@ -91,24 +91,24 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
      * 
      * @param c 
      */
-    async fileSharingDrop(c: Context): Promise<IOkResponse> {
+    async folderSharingDrop(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const id = c.req.param('id')
 
-        const exist = await prismaProxy.fileSharing.findFirst({ where: { id, accountId: account.id } })
+        const exist = await prismaProxy.folderSharing.findFirst({ where: { id, accountId: account.id } })
         if (!exist) throw new HttpException({
             errCode: 'SHARING_DENIED',
             statusCode: StatusCodes.NOT_IMPLEMENTED,
-            messages: ['You don`t have permission for this File Sharing']
+            messages: ['You don`t have permission for this Folder Sharing']
         })
 
         await prismaProxy.$transaction(async (tx) => {
-            await tx.fileSharing.delete({ where: { id: exist.id } })
+            await tx.folderSharing.delete({ where: { id: exist.id } })
         })
 
         return {
             statusCode: StatusCodes.OK,
-            messages: ['File sharing deleted!'],
+            messages: ['Folder sharing deleted!'],
         }
     }
 
@@ -116,22 +116,21 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
      * 
      * @param c 
      */
-    async get(c: Context): Promise<IOkResponse<IFileSharingObj | null>> {
+    async get(c: Context): Promise<IOkResponse<IFolderSharingObj | null>> {
         const account = c.get('account')
         const id = c.req.param('id')
-        const item: IFileSharingObj | null = await prismaProxy.fileSharing.findFirst({
+        const item: IFolderSharingObj | null = await prismaProxy.folderSharing.findFirst({
             where: { id, accountId: account.id },
             select: {
                 id: true,
-                fileId: true,
+                folderId: true,
                 permission: true,
-                file: {
+                folder: {
                     select: {
-                        fileName: true,
-                        folderId: true,
-                        folder: {
+                        folderName: true,
+                        files: {
                             select: {
-                                folderName: true
+                                fileName: true
                             }
                         }
                     }
