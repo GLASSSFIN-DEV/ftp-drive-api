@@ -3,14 +3,13 @@ import { HttpException } from '@/common/http-exception'
 import { env } from '@/config'
 import { IOkResponse } from '@/types/common'
 import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
-import { PassThrough } from 'stream'
+import { PassThrough, Readable } from 'stream'
 import { lookup } from 'mime-types'
 import { StatusCodes } from 'http-status-codes'
 
 interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
-    uploadFile(remotePath: string, obj: { localPath: string; fileName: string }): Promise<IOkResponse | HttpException>;
-    uploadFolder(localPath: string, remotePath: string): Promise<IOkResponse | HttpException>;
+    uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<IOkResponse<{ file: FileInfo; workingDir: string; }> | HttpException>;
     streamFile(remotePath: string, fileName: string): Promise<{ buffer: Buffer; contentType: string | boolean } | HttpException>;
     getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo> | HttpException>;
     rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse> | HttpException>;
@@ -24,7 +23,7 @@ export class FtpLibrary implements IFtpLibrary {
     private client: Client = new Client();
     private port: number = 990;
 
-    constructor (port: number = 990) {
+    constructor(port: number = 990) {
         this.client = new Client()
         this.port = port;
     }
@@ -54,41 +53,38 @@ export class FtpLibrary implements IFtpLibrary {
 
     /**
      * 
-     * @param remotePath 
-     * @param obj 
+     * @param buffer 
      * @returns 
      */
-    async uploadFile(remotePath: string, obj: { localPath: string; fileName: string; }): Promise<IOkResponse | HttpException> {
-        await this.connect()
-        await this.client.ensureDir(remotePath)
-        await this.client.uploadFrom(obj.localPath, obj.fileName)
+    private arrayBufferToStream(buffer: ArrayBuffer): Readable {
+        const readable = new Readable();
+        readable.push(Buffer.from(buffer));
+        readable.push(null);
 
-        const pwd = await this.client.pwd()
-        this.client.close()
-        return {
-            statusCode: 200,
-            messages: ['File success to upload!'],
-            payload: {
-                workingDir: pwd
-            }
-        } satisfies IOkResponse
+        return readable;
     }
 
     /**
      * 
-     * @param localPath 
      * @param remotePath 
+     * @param obj 
      * @returns 
      */
-    async uploadFolder(localPath: string, remotePath: string): Promise<IOkResponse | HttpException> {
+    async uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string; }): Promise<IOkResponse<{ file: FileInfo; workingDir: string; }> | HttpException> {
         await this.connect()
         await this.client.ensureDir(remotePath)
-        await this.client.uploadFromDir(localPath)
 
+        const readable = this.arrayBufferToStream(obj.buffer)
+        await this.client.uploadFrom(readable, obj.fileName)
+
+        const workingDir = await this.client.pwd()
+        const file = await this.getInfo(remotePath, obj.fileName)
         this.client.close()
+
         return {
             statusCode: 200,
-            messages: ['Folder success to upload!'],
+            messages: ['File success to upload!'],
+            payload: { workingDir, file: file.payload as FileInfo }
         } satisfies IOkResponse
     }
 
@@ -105,7 +101,7 @@ export class FtpLibrary implements IFtpLibrary {
         const files = lists.filter(e => !e.isDirectory)
         const file = files.find(e => e.name === fileName)
 
-        if (!file) 
+        if (!file)
             throw new HttpException({
                 errCode: 'FTP_FILE_NOT_FOUND',
                 statusCode: 404,
@@ -115,7 +111,7 @@ export class FtpLibrary implements IFtpLibrary {
         const chunks: Buffer[] = []
         const stream = new PassThrough()
         stream.on('data', (chunk) => chunks.push(chunk))
-        
+
         await this.client.downloadTo(stream, fileName)
         this.client.close()
 
@@ -138,7 +134,7 @@ export class FtpLibrary implements IFtpLibrary {
         const lists = await this.client.list(remotePath)
         const file = lists.find(e => e.name === name)
 
-        if (!file) 
+        if (!file)
             throw new HttpException({
                 errCode: 'FTP_FILE_NOT_FOUND',
                 statusCode: 404,
@@ -183,7 +179,7 @@ export class FtpLibrary implements IFtpLibrary {
         const lists = await this.client.list(remotePath)
         const file = lists.find(e => e.name === fileName)
 
-        if (!file) 
+        if (!file)
             throw new HttpException({
                 errCode: 'FTP_FILE_NOT_FOUND',
                 statusCode: 404,
