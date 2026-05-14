@@ -1,12 +1,15 @@
 import type { Context } from 'hono'
 import { HttpException } from '@/common/http-exception.js'
 import { ContentfulStatusCode } from 'hono/utils/http-status'
+import logger from '@/lib/logger'
+
 
 export const errorHandler = async (
   err: Error,
   c: Context
 ) => {
   if (err instanceof HttpException) {
+    logger.http('[error.api]', { ...err })
     return c.json(
       {
         errCode: err.errCode,

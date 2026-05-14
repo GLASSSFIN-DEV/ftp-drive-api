@@ -12,6 +12,7 @@ import { v7 } from 'uuid'
 import modules from '@/modules/index'
 import { swaggerUI } from '@hono/swagger-ui'
 import { definition } from './lib/swagger'
+import { useTelemetry } from './middleware/logger.middleware'
 
 type HonoVariable = {
   Variables: {
@@ -23,6 +24,7 @@ type HonoVariable = {
 const app = new Hono<HonoVariable>()
 
 app.onError(errorHandler)
+app.use('*', contextStorage())
 app.get('/docs', swaggerUI({ url: '/docs/openapi.json' }))
 app.get('/docs/openapi.json', (c) => {
   return c.json(definition)
@@ -37,7 +39,7 @@ app.use('*', async (c, next) => {
 })
 
 // setup middlewares
-app.use('*', contextStorage())
+app.use('*', useTelemetry());
 app.use('*', timing())
 app.use('*', compress())
 app.use('*', secureHeaders())

@@ -29,7 +29,6 @@ export class Auth implements IRepositoryAuth {
      */
     async login(c: Context): Promise<ResObj> {
         const obj: LoginDto = c.get('validatedBody') as LoginDto
-        console.log(`object`, obj)
         const account = await prismaProxy.account.findFirst({
             where: {
                 username: obj.username.toLowerCase(),

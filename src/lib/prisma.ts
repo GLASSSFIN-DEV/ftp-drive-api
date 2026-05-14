@@ -2,7 +2,8 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { env, Environments } from '@/config'
 import { Prisma, PrismaClient } from '@/generated/prisma/client';
-import logger, { store } from './logger';
+import logger from './logger';
+import { getContext } from 'hono/context-storage';
 
 const connectionString = env.DATABASE_URL
 const adapter = new PrismaPg({ connectionString })
@@ -115,7 +116,7 @@ export function prismaWithContext(ctx: { traceId?: string; }) {
                     const duration = performance.now() - start
                     const endAt = new Date()
 
-                    logger.input(`[prisma]`, { traceId: ctx.traceId, model, operation, duration, args, startAt, endAt })
+                    logger.http(`[prisma]`, { traceId: ctx.traceId, model, operation, duration, args, startAt, endAt })
                     return result
                 }
             }
@@ -128,8 +129,8 @@ export function prismaWithContext(ctx: { traceId?: string; }) {
  * so i still just call export default prisma in others class
  */
 export function getPrisma() {
-    const context = store.getStore()
-    if (context?.traceId) return prismaWithContext({ traceId: context.traceId })
+    const context = getContext()
+    if (context.get('traceId')) return prismaWithContext({ traceId: context.get('traceId') })
 
     return prisma
 }

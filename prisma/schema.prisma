@@ -287,7 +287,7 @@ model Trace {
 model TraceSpan {
   id         String   @id @default(uuid())
   traceId    String?
-  json       Json
+  json       Json?
   context    String
   durationMs Int
   createdAt  DateTime @default(now())
