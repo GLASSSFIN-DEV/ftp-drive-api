@@ -1,5 +1,12 @@
 import { Hono } from 'hono'
+import auth from '@/modules/auth'
+import file from '@/modules/file'
+import folder from '@/modules/folder'
 
-const router = new Hono()
+const app = new Hono()
 
-export default router
+app.route('/', auth)
+app.route('/', file)
+app.route('/', folder)
+
+export default app
