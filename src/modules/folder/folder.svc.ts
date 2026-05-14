@@ -12,6 +12,11 @@ import createPagination from "@/common/pagination";
 import { FolderWhereInput } from "@/generated/prisma/models";
 
 interface IFolderObj {
+    action?: {
+        isUpdate: boolean;
+        isDelete: boolean;
+        isSharing: boolean;
+    },
     account: {
         username: string;
         fullname: string | null;
@@ -93,7 +98,7 @@ export class RepositoryFolder implements IRepositoryFolder {
     async newFolder(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const obj: FolderNewDto = c.get('validatedBody') as FolderNewDto
-        const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId } })
+        const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId, accountId: account.id } })
 
         if (!parent) throw new HttpException({
             errCode: 'PARENT_NOT_FOUND',
@@ -101,7 +106,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Your parent folder doesn`t exists!']
         })
 
-        const exist = await prismaProxy.folder.findFirst({ where: { folderName: obj.folderName, parentId: obj.parentId } })
+        const exist = await prismaProxy.folder.findFirst({ where: { accountId: account.id, folderName: obj.folderName, parentId: obj.parentId } })
         if (exist) throw new HttpException({
             errCode: 'FOLDER_EXISTS',
             statusCode: StatusCodes.CONFLICT,
@@ -124,7 +129,8 @@ export class RepositoryFolder implements IRepositoryFolder {
                     folderName: obj.folderName,
                     parentId: obj.parentId,
                     source: source as unknown as InputJsonObject,
-                    accountId: account.id
+                    accountId: account.id,
+                    recordStatus: 'ACTIVE'
                 }
             })
         })
@@ -146,7 +152,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         const account = c.get('account')
         const obj: FolderChangeDto = c.get('validatedBody') as FolderChangeDto
         const id = c.req.param('id') as string
-        const exist = await prismaProxy.folder.findFirst({ where: { id } })
+        const exist = await prismaProxy.folder.findFirst({ where: { id, accountId: account.id } })
 
         if (!exist) throw new HttpException({
             errCode: 'FOLDER_NOT_FOUND',
@@ -154,14 +160,14 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Your folder doesn`t exists!']
         })
 
-        const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId } })
+        const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId, accountId: account.id } })
         if (!parent) throw new HttpException({
             errCode: 'PARENT_NOT_FOUND',
             statusCode: StatusCodes.NOT_FOUND,
             messages: ['Your parent folder doesn`t exists!']
         })
 
-        const nameExist = await prismaProxy.folder.findFirst({ where: { folderName: obj.folderName, parentId: obj.parentId, id: { not: id } } })
+        const nameExist = await prismaProxy.folder.findFirst({ where: { accountId: account.id, folderName: obj.folderName, parentId: obj.parentId, id: { not: id } } })
         if (nameExist) throw new HttpException({
             errCode: 'FOLDER_EXIST',
             statusCode: StatusCodes.CONFLICT,
@@ -188,7 +194,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                     accountId: account.id,
                     updatedAt: new Date()
                 },
-                where: { id }
+                where: { id, accountId: account.id }
             })
         })
 
@@ -206,8 +212,9 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param c 
      */
     async removeFolder(c: Context): Promise<IOkResponse> {
+        const account = c.get('account')
         const id = c.req.param('id') as string
-        const exist = await prismaProxy.folder.findFirst({ where: { id } })
+        const exist = await prismaProxy.folder.findFirst({ where: { id, accountId: account.id } })
 
         if (!exist) throw new HttpException({
             errCode: 'FOLDER_NOT_FOUND',
@@ -217,10 +224,10 @@ export class RepositoryFolder implements IRepositoryFolder {
 
         const fileIds = await prismaProxy.file.findMany({ where: { folderId: id } })
         await prismaProxy.$transaction(async (tx) => {
-            await tx.fileSharing.deleteMany({ where: { fileId: { in: fileIds.map(e => e.id) } } })
-            await tx.folderSharing.deleteMany({ where: { folderId: id } })
-            await tx.file.deleteMany({ where: { folderId: id } })
-            await tx.folder.delete({ where: { id } })
+            await tx.fileSharing.deleteMany({ where: { fileId: { in: fileIds.map(e => e.id) }, accountId: account.id } })
+            await tx.folderSharing.deleteMany({ where: { folderId: id, accountId: account.id } })
+            await tx.file.deleteMany({ where: { folderId: id, accountId: account.id } })
+            await tx.folder.delete({ where: { id, accountId: account.id } })
         })
 
         const remotePath = await this.queryPath(id)
@@ -242,9 +249,8 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async lists(c: Context): Promise<IItemPagination<IFolderObj[]>> {
         const account = c.get('account')
-        const { page, pageSize, keyword, startDate, endDate } = c.req.query()
+        const { page, pageSize, keyword, startDate, endDate, accountId } = c.req.query()
         const where: FolderWhereInput = {
-            accountId: account.id,
             folderName: { contains: keyword, mode: 'insensitive' },
             createdAt: {
                 gte: startDate ? new Date(startDate) : undefined,
@@ -252,6 +258,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             },
         }
 
+        if (accountId) where.accountId = accountId
         const totalRows = await prismaProxy.folder.count({ where })
         if (totalRows === 0) return {
             items: [],
@@ -311,7 +318,14 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         return {
-            items,
+            items: items.map(e => ({
+                ...e,
+                action: {
+                    isUpdate: account && account.id === e.accountId,
+                    isDelete: account && account.id === e.accountId,
+                    isSharing: account && account.id === e.accountId,
+                }
+            })),
             pagination,
             rbac: account.rbac
         }
@@ -322,10 +336,10 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param c 
      */
     async get(c: Context): Promise<IOkResponse<IFolderObj | null>> {
-        const id = c.req.param('id')
         const account = c.get('account')
+        const id = c.req.param('id')
         const item: IFolderObj | null = await prismaProxy.folder.findFirst({
-            where: { id, accountId: account.id },
+            where: { id },
             select: {
                 id: true,
                 folderName: true,
@@ -372,7 +386,14 @@ export class RepositoryFolder implements IRepositoryFolder {
         return {
             messages: ['Success'],
             statusCode: StatusCodes.OK,
-            payload: item
+            payload: item ? {
+                ...item,
+                action: {
+                    isUpdate: account && account.id === item.accountId,
+                    isDelete: account && account.id === item.accountId,
+                    isSharing: account && account.id === item.accountId,
+                }
+            } : null
         }
     }
 }

@@ -13,6 +13,11 @@ import createPagination from "@/common/pagination";
 import { FileWhereInput } from "@/generated/prisma/models";
 
 interface IFileObj {
+    action?: {
+        isUpdate: boolean;
+        isDelete: boolean;
+        isSharing: boolean;
+    },
     account: {
         username: string;
         fullname: string | null;
@@ -65,7 +70,7 @@ export class RepositoryFile implements IRepositoryFile {
     async newFile(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const obj: FileNewDto = c.get('validatedBody') as FileNewDto
-        const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId } })
+        const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId, accountId: account.id } })
 
         if (!folder) throw new HttpException({
             errCode: 'FOLDER_NOT_FOUND',
@@ -94,6 +99,7 @@ export class RepositoryFile implements IRepositoryFile {
                     fileType: obj.fileType,
                     fileHash: fileHash.message,
                     source: source as unknown as InputJsonObject,
+                    recordStatus: 'ACTIVE'
                 }
             })
         })
@@ -114,7 +120,7 @@ export class RepositoryFile implements IRepositoryFile {
         const account = c.get('account')
         const id = c.req.param('id')
         const obj: FileChangeDto = c.get('validatedBody') as FileChangeDto
-        const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId } })
+        const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId, accountId: account.id } })
 
         if (!folder) throw new HttpException({
             errCode: 'FOLDER_NOT_FOUND',
@@ -122,14 +128,14 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Selected folder not found!']
         })
 
-        const exist = await prismaProxy.file.findFirst({ where: { id } })
+        const exist = await prismaProxy.file.findFirst({ where: { id, accountId: account.id } })
         if (!exist) throw new HttpException({
             errCode: 'FILE_NOT_FOUND',
             statusCode: StatusCodes.NOT_FOUND,
             messages: ['Selected file not found!']
         })
 
-        const nameExist = await prismaProxy.file.findFirst({ where: { folderName: obj.fileName, folderId: obj.folderId, id: { not: id } } })
+        const nameExist = await prismaProxy.file.findFirst({ where: { accountId: account.id, folderName: obj.fileName, folderId: obj.folderId, id: { not: id } } })
         if (nameExist) throw new HttpException({
             errCode: 'FILE_EXIST',
             statusCode: StatusCodes.CONFLICT,
@@ -156,7 +162,7 @@ export class RepositoryFile implements IRepositoryFile {
                     fileHash: fileHash.message,
                     source: source as unknown as InputJsonObject,
                 },
-                where: { id }
+                where: { id, accountId: account.id }
             })
         })
 
@@ -182,8 +188,9 @@ export class RepositoryFile implements IRepositoryFile {
      * @param c 
      */
     async removeFile(c: Context): Promise<IOkResponse> {
+        const account = c.get('account')
         const id = c.req.param('id')
-        const exist = await prismaProxy.file.findFirst({ where: { id } })
+        const exist = await prismaProxy.file.findFirst({ where: { id, accountId: account.id } })
 
         if (!exist) throw new HttpException({
             errCode: 'FILE_NOT_FOUND',
@@ -192,8 +199,8 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         await prismaProxy.$transaction(async (tx) => {
-            await tx.fileSharing.deleteMany({ where: { fileId: id } })
-            await tx.file.delete({ where: { id } })
+            await tx.fileSharing.deleteMany({ where: { fileId: id, accountId: account.id } })
+            await tx.file.delete({ where: { id, accountId: account.id } })
         })
 
         const remotePath = await this.folderRepo.queryPath(exist.folderId)
@@ -211,9 +218,8 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async lists(c: Context): Promise<IItemPagination<IFileObj[]>> {
         const account = c.get('account')
-        const { page, pageSize, keyword, startDate, endDate } = c.req.query()
+        const { page, pageSize, keyword, startDate, endDate, accountId } = c.req.query()
         const where: FileWhereInput = {
-            accountId: account.id,
             fileName: { contains: keyword, mode: 'insensitive' },
             createdAt: {
                 gte: startDate ? new Date(startDate) : undefined,
@@ -221,6 +227,7 @@ export class RepositoryFile implements IRepositoryFile {
             },
         }
 
+        if (accountId) where.accountId = accountId
         const totalRows = await prismaProxy.file.count({ where })
         if (totalRows === 0) return {
             items: [],
@@ -272,7 +279,14 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         return {
-            items,
+            items: items.map(e => ({
+                ...e,
+                action: {
+                    isUpdate: account && account.id === e.accountId,
+                    isDelete: account && account.id === e.accountId,
+                    isSharing: account && account.id === e.accountId,
+                }
+            })),
             pagination,
             rbac: account.rbac
         }
@@ -283,10 +297,10 @@ export class RepositoryFile implements IRepositoryFile {
      * @param c 
      */
     async get(c: Context): Promise<IOkResponse<IFileObj | null>> {
-        const id = c.req.param('id')
         const account = c.get('account')
+        const id = c.req.param('id')
         const item: IFileObj | null = await prismaProxy.file.findFirst({
-            where: { id, accountId: account.id },
+            where: { id },
             select: {
                 id: true,
                 fileName: true,
@@ -325,7 +339,14 @@ export class RepositoryFile implements IRepositoryFile {
         return {
             messages: ['Success'],
             statusCode: StatusCodes.OK,
-            payload: item
+            payload: item ? {
+                ...item,
+                action: {
+                    isUpdate: account && account.id === item.accountId,
+                    isDelete: account && account.id === item.accountId,
+                    isSharing: account && account.id === item.accountId,
+                }
+            } : null
         }
     }
 }
