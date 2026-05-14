@@ -26,7 +26,7 @@ export const definition = {
   components: {
     securitySchemes: {
       BearerAuth: {
-        type: "bearer",
+        type: "apiKey",
         in: "header",
         name: "Authorization",
         description: "Bearer Authorization",

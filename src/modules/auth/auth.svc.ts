@@ -43,11 +43,11 @@ export class Auth implements IRepositoryAuth {
         })
 
         const _o: JWTPayload = { sub: account.id, role: account.rbacId }
-        const accessToken = await sign(_o, env.JWT_EXPIRE, 'HS256')
-        const refreshToken = await sign({ sub: account.id }, '1d', 'HS256')
+        const accessToken = await sign(_o, env.JWT_SECRET, 'HS256')
+        const refreshToken = await sign({ sub: account.id }, env.JWT_SECRET, 'HS256')
 
         await prismaProxy.$transaction(async (tx) => {
-            await tx.session.create({ data: { accountId: account.id, jwtHash: accessToken } })
+            await tx.session.create({ data: { accountId: account.id, jwtHash: accessToken, recordStatus: 'ACTIVE' } })
             await tx.traceSpan.create({
                 data: {
                     traceId: c.get('traceId'),

@@ -46,7 +46,7 @@ export default class AuthConsent {
           messages: ['User is Not Active!'],
         })
 
-        const session = await prismaProxy.session.findFirst({ where: { id: payload.sub, jwtHash: token, recordStatus: 'ACTIVE' } })
+        const session = await prismaProxy.session.findFirst({ where: { accountId: payload.sub, jwtHash: token, recordStatus: 'ACTIVE' } })
         if (!session) throw new HttpException({
           errCode: 'UNAUTHORIZED',
           statusCode: StatusCodes.UNAUTHORIZED,
