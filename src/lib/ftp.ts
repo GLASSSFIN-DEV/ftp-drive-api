@@ -22,7 +22,7 @@ export interface IFtpLibrary {
     removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse>>;
     removeDir(remotePath: string): Promise<IOkResponse<FTPResponse>>;
     folderExist(remotePath: string): Promise<boolean>;
-    getFileHash(remotePath: string, name: string): Promise<FTPResponse>;
+    send(remotePath: string, name: string, command: string): Promise<FTPResponse>;
 }
 
 export class FtpLibrary implements IFtpLibrary {
@@ -275,13 +275,13 @@ export class FtpLibrary implements IFtpLibrary {
      * @param remotePath 
      * @param name 
      */
-    async getFileHash(remotePath: string, name: string): Promise<FTPResponse> {
+    async send(remotePath: string, name: string, command: string): Promise<FTPResponse> {
         await this.connect()
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         const features = await this.client.features()
-        if (!features.has('XMD5')) throw new HttpException({
+        if (!features.has(command)) throw new HttpException({
             errCode: 'FILE_HASH_NOT_IMPLEMENTED',
             statusCode: StatusCodes.NOT_IMPLEMENTED,
             messages: ['XMD5 NOT_IMPLEMENTED']
