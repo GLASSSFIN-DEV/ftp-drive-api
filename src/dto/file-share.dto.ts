@@ -1,5 +1,5 @@
 import { SharePermission } from "@/generated/prisma/enums";
-import { IsEnum, IsOptional, IsString } from "class-validator";
+import { IsDate, IsEnum, IsOptional, IsString } from "class-validator";
 
 export class FileSharingNewDto {
     @IsString()
@@ -11,4 +11,7 @@ export class FileSharingNewDto {
     @IsEnum(SharePermission)
     @IsOptional()
     permission!: SharePermission;
+
+    @IsDate()
+    expiredAt!: Date
 }

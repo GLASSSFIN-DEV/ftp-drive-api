@@ -47,18 +47,20 @@ model Account {
   updatedAt    DateTime?
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
-  directorate    Diretorate      @relation(fields: [dirId], references: [id])
-  rbac           Rbac            @relation(fields: [rbacId], references: [id])
-  directorates   Diretorate[]    @relation("dirAccounts")
-  submissions    Submission[]    @relation("subAccounts")
-  rbacs          Rbac[]          @relation("rbacAccounts")
-  subsActionBy   Submission[]    @relation("subActionByAccounts")
-  folders        Folder[]        @relation("folderAccounts")
-  files          File[]          @relation("fileAccounts")
-  folderSharings FolderSharing[] @relation("folderSharingAccounts")
-  fileSharings   FileSharing[]   @relation("fileSharingAccounts")
-  traces         Trace[]         @relation("traceAccounts")
-  sessions       Session[]       @relation("sessionAccount")
+  directorate             Diretorate      @relation(fields: [dirId], references: [id])
+  rbac                    Rbac            @relation(fields: [rbacId], references: [id])
+  directorates            Diretorate[]    @relation("dirAccounts")
+  submissions             Submission[]    @relation("subAccounts")
+  rbacs                   Rbac[]          @relation("rbacAccounts")
+  subsActionBy            Submission[]    @relation("subActionByAccounts")
+  folders                 Folder[]        @relation("folderAccounts")
+  files                   File[]          @relation("fileAccounts")
+  traces                  Trace[]         @relation("traceAccounts")
+  sessions                Session[]       @relation("sessionAccount")
+  folderSharingAccounts   FolderSharing[] @relation("folderSharingAccounts")
+  folderSharingToAccounts FolderSharing[] @relation("folderSharingToAccounts")
+  fileSharingAccounts     FileSharing[]   @relation("fileSharingAccounts")
+  fileSharingToAccounts   FileSharing[]   @relation("fileSharingToAccounts")
 }
 
 model Session {
@@ -127,7 +129,6 @@ model Folder {
   account        Account         @relation("folderAccounts", fields: [accountId], references: [id])
   files          File[]
   folderSharings FolderSharing[]
-  fileSharings   FileSharing[]
 }
 
 model File {
@@ -143,8 +144,9 @@ model File {
   accountId    String
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
-  account Account @relation("fileAccounts", fields: [accountId], references: [id])
-  folder  Folder  @relation(fields: [folderId], references: [id])
+  account      Account       @relation("fileAccounts", fields: [accountId], references: [id])
+  folder       Folder        @relation(fields: [folderId], references: [id])
+  fileSharings FileSharing[]
 }
 
 model FolderSharing {
@@ -154,11 +156,13 @@ model FolderSharing {
   expiredAt     DateTime?
   permission    SharePermission @default(READ_ONLY)
   generatedLink String
+  accountId     String
   createdAt     DateTime        @default(now())
   recordStatus  RecordStatus    @default(NOT_ACTIVE)
 
-  folder  Folder  @relation(fields: [folderId], references: [id])
-  account Account @relation("folderSharingAccounts", fields: [toAccountId], references: [id])
+  account   Account @relation("folderSharingAccounts", fields: [accountId], references: [id])
+  toAccount Account @relation("folderSharingToAccounts", fields: [toAccountId], references: [id])
+  folder    Folder  @relation(fields: [folderId], references: [id])
 }
 
 model FileSharing {
@@ -168,11 +172,13 @@ model FileSharing {
   expiredAt     DateTime?
   permission    SharePermission @default(READ_ONLY)
   generatedLink String
+  accountId     String
   createdAt     DateTime        @default(now())
   recordStatus  RecordStatus    @default(NOT_ACTIVE)
 
-  file    Folder  @relation(fields: [fileId], references: [id])
-  account Account @relation("fileSharingAccounts", fields: [toAccountId], references: [id])
+  account   Account @relation("fileSharingAccounts", fields: [accountId], references: [id])
+  toAccount Account @relation("fileSharingToAccounts", fields: [toAccountId], references: [id])
+  file      File    @relation(fields: [fileId], references: [id])
 }
 
 model Trace {

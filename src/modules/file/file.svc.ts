@@ -29,6 +29,13 @@ interface IFileObj {
     createdAt: Date;
     updatedAt: Date | null;
     accountId: string;
+    fileSharings: {
+        account: {
+            username: string;
+            fullname: string | null;
+        };
+        id: string;
+    }[];
 }[]
 
 interface IFileSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; fileHash?: FTPResponse }
@@ -225,7 +232,7 @@ export class RepositoryFile implements IRepositoryFile {
         } satisfies IItemPagination
 
         const pagination = createPagination(Number(page), Number(pageSize), totalRows);
-        const items = await prismaProxy.file.findMany({
+        const items: IFileObj[] = await prismaProxy.file.findMany({
             where,
             take: pagination.take,
             skip: pagination.skip,
@@ -250,6 +257,17 @@ export class RepositoryFile implements IRepositoryFile {
                         folderName: true
                     }
                 },
+                fileSharings: {
+                    select: {
+                        id: true,
+                        account: {
+                            select: {
+                                username: true,
+                                fullname: true,
+                            }
+                        }
+                    }
+                }
             }
         })
 
@@ -257,7 +275,7 @@ export class RepositoryFile implements IRepositoryFile {
             items,
             pagination,
             rbac: account.rbac
-        } satisfies IItemPagination
+        }
     }
 
     /**
@@ -266,8 +284,9 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async get(c: Context): Promise<IOkResponse<IFileObj | null>> {
         const id = c.req.param('id')
-        const item = await prismaProxy.file.findFirst({
-            where: { id },
+        const account = c.get('account')
+        const item: IFileObj | null = await prismaProxy.file.findFirst({
+            where: { id, accountId: account.id },
             select: {
                 id: true,
                 fileName: true,
@@ -289,6 +308,17 @@ export class RepositoryFile implements IRepositoryFile {
                         folderName: true
                     }
                 },
+                fileSharings: {
+                    select: {
+                        id: true,
+                        account: {
+                            select: {
+                                username: true,
+                                fullname: true,
+                            }
+                        }
+                    }
+                }
             }
         })
 
@@ -296,6 +326,6 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Success'],
             statusCode: StatusCodes.OK,
             payload: item
-        } satisfies IOkResponse
+        }
     }
 }

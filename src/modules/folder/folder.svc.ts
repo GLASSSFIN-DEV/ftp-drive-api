@@ -32,6 +32,13 @@ interface IFolderObj {
             folders: number;
         };
     }[];
+    fileSharings: {
+        account: {
+            username: string;
+            fullname: string | null;
+        };
+        id: string;
+    }[];
 }[]
 
 interface IFolderSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; }
@@ -256,7 +263,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         } satisfies IItemPagination
 
         const pagination = createPagination(Number(page), Number(pageSize), totalRows);
-        const items = await prismaProxy.folder.findMany({
+        const items: IFolderObj[] = await prismaProxy.folder.findMany({
             where,
             take: pagination.take,
             skip: pagination.skip,
@@ -288,6 +295,17 @@ export class RepositoryFolder implements IRepositoryFolder {
                         },
                         folderName: true,
                     }
+                },
+                fileSharings: {
+                    select: {
+                        id: true,
+                        account: {
+                            select: {
+                                username: true,
+                                fullname: true,
+                            }
+                        }
+                    }
                 }
             }
         })
@@ -296,7 +314,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             items,
             pagination,
             rbac: account.rbac
-        } satisfies IItemPagination
+        }
     }
 
     /**
@@ -305,8 +323,9 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async get(c: Context): Promise<IOkResponse<IFolderObj | null>> {
         const id = c.req.param('id')
-        const item = await prismaProxy.folder.findFirst({
-            where: { id },
+        const account = c.get('account')
+        const item: IFolderObj | null = await prismaProxy.folder.findFirst({
+            where: { id, accountId: account.id },
             select: {
                 id: true,
                 folderName: true,
@@ -335,6 +354,17 @@ export class RepositoryFolder implements IRepositoryFolder {
                         },
                         folderName: true,
                     }
+                },
+                fileSharings: {
+                    select: {
+                        id: true,
+                        account: {
+                            select: {
+                                username: true,
+                                fullname: true,
+                            }
+                        }
+                    }
                 }
             }
         })
@@ -343,6 +373,6 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Success'],
             statusCode: StatusCodes.OK,
             payload: item
-        } satisfies IOkResponse
+        }
     }
 }
