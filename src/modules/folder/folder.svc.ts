@@ -156,7 +156,7 @@ export class RepositoryFolder implements IRepositoryFolder {
 
         const nameExist = await prismaProxy.folder.findFirst({ where: { folderName: obj.folderName, parentId: obj.parentId, id: { not: id } } })
         if (nameExist) throw new HttpException({
-            errCode: 'FOLDER_EXISTS',
+            errCode: 'FOLDER_EXIST',
             statusCode: StatusCodes.CONFLICT,
             messages: ['Folder name already exist!']
         })
@@ -215,6 +215,9 @@ export class RepositoryFolder implements IRepositoryFolder {
             await tx.file.deleteMany({ where: { folderId: id } })
             await tx.folder.delete({ where: { id } })
         })
+
+        const remotePath = await this.qPath(id)
+        await this.ftp.removeDir(remotePath)
 
         return {
             statusCode: StatusCodes.OK,
