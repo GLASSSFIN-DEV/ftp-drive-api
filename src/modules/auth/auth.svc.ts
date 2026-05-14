@@ -9,7 +9,7 @@ import { Context } from "hono";
 import { InputJsonValue } from "@prisma/client/runtime/client";
 import { IOkResponse } from "@/types/api.res";
 
-interface RepositoryAuth {
+interface IRepositoryAuth {
     login(c: Context): Promise<ResObj | HttpException>;
     logout(c: Context): Promise<IOkResponse | HttpException>;
     refresh(c: Context): Promise<ResObj | HttpException>;
@@ -22,7 +22,7 @@ export interface ResObj {
     basePath?: string;
 }
 
-export class Auth implements RepositoryAuth {
+export class Auth implements IRepositoryAuth {
     /**
      * 
      * @param c
