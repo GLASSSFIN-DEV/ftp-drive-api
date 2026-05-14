@@ -7,10 +7,13 @@ import RequestValidator from '@/middleware/req.validator'
 import { MediaDropDto, MediaStreamDto } from '@/dto/media.dto'
 import { lookup } from 'mime-types'
 import AuthConsent from '@/middleware/auth.validator'
+import prismaProxy from '@/lib/prisma'
+import { Prisma } from '@/generated/prisma/client'
+import { IOkResponse } from '@/types/common'
 
 const router = new Hono()
 
-router.post('/upload', AuthConsent.validate(), async (c) => {
+router.post('/media/upload', AuthConsent.validate(), async (c) => {
     const body = await c.req.parseBody()
     const file = body['file']
     const site = c.req.query('site')
@@ -35,7 +38,7 @@ router.post('/upload', AuthConsent.validate(), async (c) => {
     return c.json({ upload: res.payload, file })
 })
 
-router.post('/uploads', AuthConsent.validate(), async (c) => {
+router.post('/media/uploads', AuthConsent.validate(), async (c) => {
     const body = await c.req.parseBody({ all: true })
     const rawFiles = body['files']
     const site = c.req.query('site')
@@ -67,7 +70,7 @@ router.post('/uploads', AuthConsent.validate(), async (c) => {
     return c.json(res)
 })
 
-router.post('/upload/folder', AuthConsent.validate(), async (c) => {
+router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
     const body = await c.req.parseBody({ all: true })
     const rawFiles = body['files']
     const rawPaths = body['paths[]']
@@ -121,7 +124,7 @@ router.post('/upload/folder', AuthConsent.validate(), async (c) => {
     return c.json({ res, dirs })
 })
 
-router.post('/drop', RequestValidator.validate(MediaDropDto), AuthConsent.validate(), async (c) => {
+router.post('/media/drop', RequestValidator.validate(MediaDropDto), AuthConsent.validate(), async (c) => {
     const body = c.get('validatedBody') as MediaDropDto
     const ftpLibrary = new FtpLibrary()
     const res = await ftpLibrary.removeFile(body.remotePath, body.fileName)
@@ -129,7 +132,7 @@ router.post('/drop', RequestValidator.validate(MediaDropDto), AuthConsent.valida
     return c.json(res)
 })
 
-router.post('/stream', RequestValidator.validate(MediaStreamDto), AuthConsent.validate(), async (c) => {
+router.post('/media/stream', RequestValidator.validate(MediaStreamDto), AuthConsent.validate(), async (c) => {
     const body = c.get('validatedBody') as MediaStreamDto
     const ftpLibrary = new FtpLibrary()
     const res = await ftpLibrary.streamFile(body.remotePath, body.fileName)
@@ -142,10 +145,22 @@ router.post('/stream', RequestValidator.validate(MediaStreamDto), AuthConsent.va
     }
 
     if (res.size !== undefined) {
-      headers["Content-Length"] = res.size.toString()
+        headers["Content-Length"] = res.size.toString()
     }
 
     return new Response(res.stream, { status: StatusCodes.OK, headers })
+})
+
+router.get('/media/site', AuthConsent.validate(), async (c) => {
+    const sites = await prismaProxy.option.findFirst({
+        select: { key: true, json: true },
+        where: {
+            key: 'ftp-site',
+            json: { not: Prisma.AnyNull }
+        }
+    })
+
+    return c.json({ messages: [], statusCode: StatusCodes.OK, payload: sites } satisfies IOkResponse)
 })
 
 export default router
