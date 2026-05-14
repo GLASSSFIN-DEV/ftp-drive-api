@@ -1,5 +1,5 @@
 import { HttpException } from "@/common/http-exception";
-import { FolderNewDto } from "@/dto/folder.dto";
+import { FolderChangeDto, FolderNewDto } from "@/dto/folder.dto";
 import { FtpLibrary, type IFtpLibrary } from "@/lib/ftp";
 import prismaProxy from "@/lib/prisma";
 import { IItemPagination, IOkResponse } from "@/types/common";
@@ -35,19 +35,20 @@ interface IFolderObj {
 }[]
 
 interface IFolderSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; }
-interface IRepositoryFolder {
+export interface IRepositoryFolder {
     newFolder(c: Context): Promise<IOkResponse | HttpException>;
     changeFolder(c: Context): Promise<IOkResponse | HttpException>;
     removeFolder(c: Context): Promise<IOkResponse | HttpException>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]> | HttpException>;
     get(c: Context): Promise<IOkResponse<IFolderObj | null> | HttpException>;
+    qPath(folderId: string): Promise<string>;
 }
 
 export class RepositoryFolder implements IRepositoryFolder {
     private readonly ftp: IFtpLibrary = new FtpLibrary()
-    private readonly ftpPort: number = 0
+    private readonly ftpPort: number = 990
 
-    constructor(ftpPort: number) {
+    constructor(ftpPort: number = 990) {
         this.ftp = new FtpLibrary(ftpPort)
         this.ftpPort = ftpPort;
     }
@@ -57,7 +58,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param folderId 
      * @returns 
      */
-    private async qPath(folderId: string): Promise<string> {
+    public async qPath(folderId: string): Promise<string> {
         const folders = await prismaProxy.folder.findMany()
         const map = new Map<string, Folder>()
 
@@ -136,7 +137,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async changeFolder(c: Context): Promise<IOkResponse | HttpException> {
         const account = c.get('account')
-        const obj: FolderNewDto = c.get('validatedBody') as FolderNewDto
+        const obj: FolderChangeDto = c.get('validatedBody') as FolderChangeDto
         const id = c.req.param('id') as string
         const exist = await prismaProxy.folder.findFirst({ where: { id } })
 

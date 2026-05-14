@@ -5,6 +5,7 @@ import { IOkResponse } from '@/types/common'
 import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
 import { PassThrough } from 'stream'
 import { lookup } from 'mime-types'
+import { StatusCodes } from 'http-status-codes'
 
 interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
@@ -16,6 +17,7 @@ export interface IFtpLibrary {
     removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse> | HttpException>;
     removeDir(remotePath: string): Promise<IOkResponse<FTPResponse> | HttpException>;
     folderExist(remotePath: string): Promise<boolean | HttpException>;
+    getFileHash(remotePath: string, name: string): Promise<FTPResponse | HttpException>;
 }
 
 export class FtpLibrary implements IFtpLibrary {
@@ -227,4 +229,25 @@ export class FtpLibrary implements IFtpLibrary {
         return true
     }
 
+    /**
+     * 
+     * @param remotePath 
+     * @param name 
+     */
+    async getFileHash(remotePath: string, name: string): Promise<FTPResponse | HttpException> {
+        await this.connect()
+        await this.client.ensureDir(remotePath)
+
+        const features = await this.client.features()
+        if (!features.has('XMD5')) throw new HttpException({
+            errCode: 'FILE_HASH_NOT_IMPLEMENTED',
+            statusCode: StatusCodes.NOT_IMPLEMENTED,
+            messages: ['XMD5 NOT_IMPLEMENTED']
+        })
+
+        const path = remotePath + name
+        const res = await this.client.send(`XMD5 ${path.replace(/\/+/g, '/')}`)
+
+        return res
+    }
 }
