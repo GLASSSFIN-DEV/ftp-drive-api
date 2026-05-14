@@ -13,6 +13,7 @@ export default class AuthConsent {
     return createMiddleware(async (c, next) => {
       try {
         const authorization = c.req.header('Authorization')
+        console.debug(`ERR`, authorization)
         if (!authorization) throw new HttpException({
           errCode: 'UNAUTHORIZED',
           statusCode: StatusCodes.UNAUTHORIZED,

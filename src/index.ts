@@ -23,7 +23,7 @@ type HonoVariable = {
 
 const app = new Hono<HonoVariable>()
 
-app.onError(errorHandler)
+app.onError(errorHandler())
 app.use('*', contextStorage())
 app.get('/docs', swaggerUI({ url: '/docs/openapi.json' }))
 app.get('/docs/openapi.json', (c) => {

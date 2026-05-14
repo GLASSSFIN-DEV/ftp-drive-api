@@ -1,5 +1,6 @@
 
 export class HttpException<T = unknown> extends Error {
+  [x: string]: any
   public errCode: string
   public statusCode: number
   public messages: string[]

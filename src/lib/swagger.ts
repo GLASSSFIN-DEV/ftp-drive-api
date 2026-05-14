@@ -125,7 +125,6 @@ export const definition = {
         },
         required: ["items", "pagination"],
       },
-
     },
   },
   tags: [
@@ -136,6 +135,7 @@ export const definition = {
     { name: "Sharing", description: "Sharing related endpoints" },
   ],
   paths: {
+    // Auth
     '/v1/auth/login': {
       post: {
         tags: ['Auth'],
@@ -151,7 +151,6 @@ export const definition = {
             },
           },
         },
-
         responses: {
           200: {
             description: 'Success',
@@ -177,26 +176,14 @@ export const definition = {
       },
     },
     '/v1/auth/logout': {
-      post: {
+      get: {
         tags: ['Auth'],
         security: [
           {
             BearerAuth: [],
           },
         ],
-        summary: 'Login',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref:
-                  '#/components/schemas/LoginDto',
-              },
-            },
-          },
-        },
-
+        summary: 'Logout',
         responses: {
           200: {
             description: 'Success',
@@ -207,6 +194,248 @@ export const definition = {
                 },
               },
             },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // Folder
+    '/v1/folder': {
+      post: {
+        tags: ['Folder'],
+        summary: 'Folder New',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref:
+                  '#/components/schemas/FileNewDto',
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OkResponse",
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/folder/{id}': {
+      get: {
+        tags: ['Folder'],
+        summary: 'Folder Get',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Id",
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OkResponse",
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ['Folder'],
+        summary: 'Folder Change',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref:
+                  '#/components/schemas/FileChangeDto',
+              },
+            },
+          },
+        },
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Id",
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OkResponse",
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        tags: ['Folder'],
+        summary: 'Folder Remove',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Id",
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OkResponse",
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/folders': {
+      get: {
+        tags: ['Folder'],
+        summary: 'Folders',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", default: 1 },
+            description: "Page number for pagination (default: 1)",
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            required: false,
+            schema: { type: "integer", default: 10 },
+            description: "Number of items per page (default: 10, max: 500)",
+          },
+          {
+            name: "keyword",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+            description: "Search keyword to filter folders",
+          },
+          {
+            name: "startDate",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+            description: "Start date period",
+          },
+          {
+            name: "endDate",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+            description: "End date period",
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
           },
           400: {
             description: 'Bad Request',

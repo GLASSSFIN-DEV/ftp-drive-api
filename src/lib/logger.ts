@@ -1,10 +1,14 @@
-import { createLogger, format, type Logger } from 'winston';
-import { env } from '@/config';
+import { createLogger, format, transports, type Logger } from 'winston';
+import { env, Environments } from '@/config';
 import prismaProxy from './prisma';
 import { v7 } from 'uuid';
 import Transport from 'winston-transport';
 import { getContext } from 'hono/context-storage';
 import fastRedact from 'fast-redact';
+
+export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
+  return value !== null && value !== undefined;
+}
 
 const redact = fastRedact({
   paths: [
@@ -89,7 +93,10 @@ try {
   logger = createLogger({
     level: 'silly',
     format: logFormat,
-    transports: [new PrismaTransport()],
+    transports: [
+      new PrismaTransport(), 
+      env.NODE_ENV === Environments.DEV ? new transports.Console() : null
+    ].filter(notEmpty),
   });
 } catch (err) {
   console.error('Failed to initialize logger', err);

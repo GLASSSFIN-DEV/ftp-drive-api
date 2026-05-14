@@ -12,7 +12,7 @@ router.post('/auth/login', RequestValidator.validate(LoginDto), async (c) => {
     return c.json(value)
 })
 
-router.post('/auth/logout', AuthConsent.validate(), async (c) => {
+router.get('/auth/logout', AuthConsent.validate(), async (c) => {
     const value = await authService.logout(c)
     return c.json(value)
 })
