@@ -41,7 +41,7 @@ export interface IRepositoryFolder {
     removeFolder(c: Context): Promise<IOkResponse | HttpException>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]> | HttpException>;
     get(c: Context): Promise<IOkResponse<IFolderObj | null> | HttpException>;
-    qPath(folderId: string): Promise<string>;
+    queryPath(folderId: string): Promise<string>;
 }
 
 export class RepositoryFolder implements IRepositoryFolder {
@@ -58,7 +58,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param folderId 
      * @returns 
      */
-    public async qPath(folderId: string): Promise<string> {
+    public async queryPath(folderId: string): Promise<string> {
         const folders = await prismaProxy.folder.findMany()
         const map = new Map<string, Folder>()
 
@@ -101,7 +101,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
-        const remotePath = await this.qPath(parent.id)
+        const remotePath = await this.queryPath(parent.id)
         await this.ftp.folderExist(remotePath)
 
         const finalPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
@@ -161,7 +161,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
-        const oldPath = await this.qPath(parent.id)
+        const oldPath = await this.queryPath(parent.id)
         const newPath = (oldPath + '/' + obj.folderName).replace(/\/+/g, '/')
         await this.ftp.folderExist(oldPath)
 
@@ -216,7 +216,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             await tx.folder.delete({ where: { id } })
         })
 
-        const remotePath = await this.qPath(id)
+        const remotePath = await this.queryPath(id)
         await this.ftp.removeDir(remotePath)
 
         return {

@@ -134,9 +134,10 @@ model File {
   id           String       @id @default(uuid())
   folderId     String
   fileName     String
-  fileHash     String
+  fileHash     String?
   fileSize     Int
   fileType     String
+  source       Json
   createdAt    DateTime     @default(now())
   updatedAt    DateTime?
   accountId    String

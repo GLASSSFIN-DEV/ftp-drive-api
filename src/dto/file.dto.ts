@@ -21,10 +21,4 @@ export class FileChangeDto {
 
     @IsString()
     fileName!: string;
-
-    @IsInt()
-    fileSize!: number;
-
-    @IsString()
-    fileType!: string;
 }
