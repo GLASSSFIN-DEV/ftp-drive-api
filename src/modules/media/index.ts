@@ -10,7 +10,6 @@ import AuthConsent from '@/middleware/auth.validator'
 import prismaProxy from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import { IOkResponse } from '@/types/common'
-import { arrayBuffer } from 'stream/consumers'
 
 const router = new Hono()
 
@@ -139,14 +138,9 @@ router.post('/media/stream', RequestValidator.validate(MediaStreamDto), AuthCons
     const res = await ftpLibrary.streamFile(body.remotePath, body.fileName)
     const mimeType = lookup(body.fileName)
     const headers: Record<string, string> = {
-        "Content-Type": mimeType as string ?? 'application/json',
+        "Content-Type": mimeType as string ?? 'application/octet-stream',
         "Content-Disposition": `inline; filename="${body.fileName}"`,
         "Cache-Control": "no-store",
-        "Transfer-Encoding": "chunked",
-    }
-
-    if (res.size !== undefined) {
-        headers["Content-Length"] = res.size.toString()
     }
 
     return new Response(res.stream, { status: StatusCodes.OK, headers })
