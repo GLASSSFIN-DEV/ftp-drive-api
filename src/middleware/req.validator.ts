@@ -1,5 +1,3 @@
-// src/middlewares/request-validator.middleware.ts
-
 import { createMiddleware } from 'hono/factory'
 import type { ClassConstructor } from 'class-transformer'
 import { plainToInstance } from 'class-transformer'
@@ -34,14 +32,14 @@ export default class RequestValidator {
 
         if (!errors.length) {
           c.set('validatedBody', convertedObject)
-          await prismaProxy.traceSpan.create({
-            data: {
-              traceId: c.get('traceId'),
-              json: { body, convertedObject } as unknown as InputJsonObject,
-              context: `[body]`,
-              durationMs: 0,
-            }
-          })
+          // await prismaProxy.traceSpan.create({
+          //   data: {
+          //     traceId: c.get('traceId'),
+          //     json: { body, convertedObject } as unknown as InputJsonObject,
+          //     context: `[body]`,
+          //     durationMs: 0,
+          //   }
+          // })
           
           await next()
           return

@@ -11,7 +11,7 @@ import { timing, TimingVariables } from 'hono/timing'
 import { v7 } from 'uuid'
 import modules from '@/modules/index'
 import { swaggerUI } from '@hono/swagger-ui'
-import { openAPIDocument } from './lib/swagger'
+import { definition } from './lib/swagger'
 
 type HonoVariable = {
   Variables: {
@@ -25,7 +25,7 @@ const app = new Hono<HonoVariable>()
 app.onError(errorHandler)
 app.get('/docs', swaggerUI({ url: '/docs/openapi.json' }))
 app.get('/docs/openapi.json', (c) => {
-  return c.json(openAPIDocument)
+  return c.json(definition)
 })
 
 app.use('*', async (c, next) => {

@@ -8,6 +8,8 @@ const logFormat = format.combine(
   format.label({ label: env.NODE_ENV }),
   format.ms(),
   format.json(),
+  format.prettyPrint(),
+  format.splat()
 );
 
 let logger: Logger;

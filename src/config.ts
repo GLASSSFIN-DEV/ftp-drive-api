@@ -22,6 +22,7 @@ const config = {
         choices: [...Object.values(Environments)],
     }),
     PORT: num({ default: 9000 }),
+    API_URL: str({ default: 'localhost' }),
     
     JWT_SECRET: str({ default: 'jwt-secret' }),
     JWT_EXPIRE: str({ default: '30m' }),

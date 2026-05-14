@@ -6,26 +6,35 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  previewFeatures = ["views"]
 }
 
 datasource db {
   provider = "postgresql"
+  schemas = ["drive"]
+
 }
 
 enum RecordStatus {
   ACTIVE
   NOT_ACTIVE
+
+  @@schema("drive")
 }
 
 enum SubmissionAction {
   WAITING
   APPROVED
   REJECTED
+
+  @@schema("drive")
 }
 
 enum SharePermission {
   READ_ONLY
   READ_WRITE
+
+  @@schema("drive")
 }
 
 model Option {
@@ -33,6 +42,9 @@ model Option {
   key       String
   json      Json?
   createdAt DateTime @default(now())
+
+  @@schema("drive")
+  @@index([createdAt(sort: Desc)])
 }
 
 model Account {
@@ -61,6 +73,14 @@ model Account {
   folderSharingToAccounts FolderSharing[] @relation("folderSharingToAccounts")
   fileSharingAccounts     FileSharing[]   @relation("fileSharingAccounts")
   fileSharingToAccounts   FileSharing[]   @relation("fileSharingToAccounts")
+
+  @@schema("drive")
+  @@index([dirId])
+  @@index([rbacId])
+  @@index([provider])
+  @@index([recordStatus])
+  @@index([createdAt(sort: Desc)])
+  @@index([username, provider])
 }
 
 model Session {
@@ -72,6 +92,14 @@ model Session {
   createdAt    DateTime     @default(now())
 
   account Account @relation("sessionAccount", fields: [accountId], references: [id])
+
+  @@schema("drive")
+  @@index([accountId])
+  @@index([jwtHash])
+  @@index([recordStatus])
+  @@index([createdAt(sort: Desc)])
+  @@index([accountId, appCode])
+
 }
 
 model Diretorate {
@@ -84,6 +112,12 @@ model Diretorate {
 
   accounts Account[]
   account  Account?  @relation("dirAccounts", fields: [accountId], references: [id])
+
+  @@schema("drive")
+  @@index([accountId])
+  @@index([recordStatus])
+  @@index([createdAt(sort: Desc)])
+  @@index([name])
 }
 
 model Submission {
@@ -99,6 +133,13 @@ model Submission {
 
   account         Account? @relation("subAccounts", fields: [accountId], references: [id])
   accountActionBy Account? @relation("subActionByAccounts", fields: [actionBy], references: [id])
+
+  @@schema("drive")
+  @@index([accountId])
+  @@index([actionBy])
+  @@index([status])
+  @@index([expiredAt])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Rbac {
@@ -112,6 +153,11 @@ model Rbac {
 
   account  Account?  @relation("rbacAccounts", fields: [accountId], references: [id])
   accounts Account[]
+
+  @@schema("drive")
+  @@index([accountId])
+  @@index([recordStatus])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Folder {
@@ -129,6 +175,15 @@ model Folder {
   account        Account         @relation("folderAccounts", fields: [accountId], references: [id])
   files          File[]
   folderSharings FolderSharing[]
+
+  @@schema("drive")
+  @@index([parentId])
+  @@index([accountId])
+  @@index([recordStatus])
+  @@index([createdAt(sort: Desc)])
+  @@index([folderName])
+  @@index([accountId, parentId])
+  @@index([accountId, folderName])
 }
 
 model File {
@@ -147,6 +202,17 @@ model File {
   account      Account       @relation("fileAccounts", fields: [accountId], references: [id])
   folder       Folder        @relation(fields: [folderId], references: [id])
   fileSharings FileSharing[]
+
+  @@schema("drive")
+  @@index([folderId])
+  @@index([accountId])
+  @@index([recordStatus])
+  @@index([createdAt(sort: Desc)])
+  @@index([fileHash])
+  @@index([fileType])
+  @@index([fileName])
+  @@index([folderId, fileName])
+  @@index([accountId, folderId])
 }
 
 model FolderSharing {
@@ -163,6 +229,15 @@ model FolderSharing {
   account   Account @relation("folderSharingAccounts", fields: [accountId], references: [id])
   toAccount Account @relation("folderSharingToAccounts", fields: [toAccountId], references: [id])
   folder    Folder  @relation(fields: [folderId], references: [id])
+
+  @@schema("drive")
+
+  @@index([folderId])
+  @@index([accountId])
+  @@index([toAccountId])
+  @@index([generatedLink])
+  @@index([expiredAt])
+  @@index([recordStatus])
 }
 
 model FileSharing {
@@ -179,6 +254,15 @@ model FileSharing {
   account   Account @relation("fileSharingAccounts", fields: [accountId], references: [id])
   toAccount Account @relation("fileSharingToAccounts", fields: [toAccountId], references: [id])
   file      File    @relation(fields: [fileId], references: [id])
+
+  @@schema("drive")
+
+  @@index([fileId])
+  @@index([accountId])
+  @@index([toAccountId])
+  @@index([generatedLink])
+  @@index([expiredAt])
+  @@index([recordStatus])
 }
 
 model Trace {
@@ -191,6 +275,13 @@ model Trace {
   createdAt      DateTime @default(now())
 
   account Account? @relation("traceAccounts", fields: [accountId], references: [id])
+
+  @@schema("drive")
+  @@index([accountId])
+  @@index([status])
+  @@index([method])
+  @@index([createdAt(sort: Desc)])
+  @@index([url])
 }
 
 model TraceSpan {
@@ -200,4 +291,10 @@ model TraceSpan {
   context    String
   durationMs Int
   createdAt  DateTime @default(now())
+
+  @@schema("drive")
+  @@index([traceId])
+  @@index([context])
+  @@index([createdAt(sort: Desc)])
+  @@index([durationMs])
 }
