@@ -12,6 +12,7 @@ import {
 import logger from '@/lib/logger.js'
 import { HttpException } from '@/common/http-exception.js'
 import prismaProxy from '@/lib/prisma'
+import { InputJsonObject } from '@prisma/client/runtime/client'
 
 export default class RequestValidator {
   static validate = <T>(
@@ -36,7 +37,7 @@ export default class RequestValidator {
           await prismaProxy.traceSpan.create({
             data: {
               traceId: c.get('traceId'),
-              json: body,
+              json: { body, convertedObject } as unknown as InputJsonObject,
               context: `[body]`,
               durationMs: 0,
             }

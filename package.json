@@ -12,6 +12,7 @@
     "dotenv": "^17.4.2",
     "envalid": "^8.1.1",
     "hono": "^4.12.18",
+    "mime-types": "^3.0.2",
     "reflect-metadata": "^0.2.2",
     "swagger-ui-dist": "^5.32.6",
     "tsconfig-paths": "^4.2.0",
@@ -19,6 +20,7 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@types/mime-types": "^3.0.1",
     "@types/node": "^20.11.17",
     "prisma": "^7.8.0",
     "tsx": "^4.7.1",
