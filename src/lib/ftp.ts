@@ -5,15 +5,16 @@ import { IOkResponse } from '@/types/common'
 import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
 import { PassThrough, Readable } from 'stream'
 import { StatusCodes } from 'http-status-codes'
+import logger from '@/lib/logger'
 
 interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
-    uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<IOkResponse<{ 
-        file: FileInfo; 
-        workingDir: string; 
+    uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<IOkResponse<{
+        file: FileInfo;
+        workingDir: string;
     }>>;
-    streamFile(remotePath: string, fileName: string): Promise<{ 
-        stream: ReadableStream<Uint8Array<ArrayBufferLike>>; 
+    streamFile(remotePath: string, fileName: string): Promise<{
+        stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
         size: number;
     }>;
     getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo>>;
@@ -75,18 +76,24 @@ export class FtpLibrary implements IFtpLibrary {
      * @param obj 
      * @returns 
      */
-    async uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string; }): Promise<IOkResponse<{ 
-        file: FileInfo; 
-        workingDir: string; 
+    async uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string; }): Promise<IOkResponse<{
+        file: FileInfo;
+        workingDir: string;
     }>> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         const readable = this.arrayBufferToStream(obj.buffer)
-        await this.client.uploadFrom(readable, obj.fileName)
+        this.client.trackProgress(info => {
+            logger.http('[ftp]', { ...info })
+        })
 
+        await this.client.uploadFrom(readable, obj.fileName)
         const workingDir = await this.client.pwd()
-        const file = await this.getInfo(remotePath, obj.fileName)
+        const file = await this.getInfo(workingDir, obj.fileName)
+
+        this.client.trackProgress()
         this.client.close()
 
         return {
@@ -101,14 +108,18 @@ export class FtpLibrary implements IFtpLibrary {
      * @param remotePath 
      * @param fileName 
      */
-    async streamFile(remotePath: string, fileName: string): Promise<{ 
-        stream: ReadableStream<Uint8Array<ArrayBufferLike>>; 
-        size: number; 
-    } > {
+    async streamFile(remotePath: string, fileName: string): Promise<{
+        stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
+        size: number;
+    }> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
         const client = this.client;
 
+        this.client.trackProgress(info => {
+            logger.http('[ftp]', { ...info })
+        })
         const lists = await this.client.list(remotePath)
         const files = lists.filter(e => !e.isDirectory)
         const file = files.find(e => e.name === fileName)
@@ -131,6 +142,7 @@ export class FtpLibrary implements IFtpLibrary {
                 this.client.close();
             });
 
+        this.client.trackProgress()
         const stream = new ReadableStream<Uint8Array>({
             start(controller) {
                 pass.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
@@ -157,6 +169,7 @@ export class FtpLibrary implements IFtpLibrary {
      */
     async getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo>> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         const lists = await this.client.list(remotePath)
@@ -184,6 +197,7 @@ export class FtpLibrary implements IFtpLibrary {
      */
     async rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse>> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(oldPath)
         const res = await this.client.rename(oldPath, newPath)
 
@@ -202,6 +216,7 @@ export class FtpLibrary implements IFtpLibrary {
      */
     async removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse>> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         const lists = await this.client.list(remotePath)
@@ -230,6 +245,7 @@ export class FtpLibrary implements IFtpLibrary {
      */
     async removeDir(remotePath: string): Promise<IOkResponse<FTPResponse>> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         const res = await this.client.remove(remotePath)
@@ -248,6 +264,7 @@ export class FtpLibrary implements IFtpLibrary {
     */
     async folderExist(remotePath: string): Promise<boolean> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         return true
@@ -260,6 +277,7 @@ export class FtpLibrary implements IFtpLibrary {
      */
     async getFileHash(remotePath: string, name: string): Promise<FTPResponse> {
         await this.connect()
+        await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
         const features = await this.client.features()

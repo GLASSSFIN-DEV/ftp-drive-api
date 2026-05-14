@@ -10,6 +10,7 @@ import AuthConsent from '@/middleware/auth.validator'
 import prismaProxy from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import { IOkResponse } from '@/types/common'
+import { arrayBuffer } from 'stream/consumers'
 
 const router = new Hono()
 
@@ -35,7 +36,7 @@ router.post('/media/upload', AuthConsent.validate(), async (c) => {
     const buffer = await file.arrayBuffer()
     const res = await ftpLibrary.uploadFile(remotePath, { buffer, fileName: file.name })
 
-    return c.json({ upload: res.payload, file })
+    return c.json({ ...res.payload })
 })
 
 router.post('/media/uploads', AuthConsent.validate(), async (c) => {
