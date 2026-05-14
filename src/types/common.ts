@@ -1,3 +1,5 @@
+import { JsonValue } from "@prisma/client/runtime/client";
+
 export interface IFailResponse<T = unknown> {
   errCode: string
   statusCode: number
@@ -22,5 +24,5 @@ export interface IPagination {
 export interface IItemPagination<T = unknown> {
   items: T;
   pagination: IPagination;
-  rbac?: { [key: string]: boolean }
+  rbac?: JsonValue
 }

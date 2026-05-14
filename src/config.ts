@@ -29,7 +29,7 @@ const config = {
     
     DATABASE_URL: str({ default: 'postgres://personal:Pers0nal@10.121.75.73:5432/personal?schema=public' }),
     FTP_HOST: str({ default: 'localhost' }),
-    FTP_PORT: num({ default: 990 }),
+    FTP_PORTS: str(),
     FTP_USERNAME: str(),
     FTP_PASSWORD: str(),
     FTP_CONFIG: json({ desc: `{ secure: boolean; }` }),

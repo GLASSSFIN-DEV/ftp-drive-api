@@ -44,7 +44,7 @@ model Account {
   provider     String
   rbacId       String
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime?
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   directorate    Diretorate      @relation(fields: [dirId], references: [id])
@@ -76,7 +76,7 @@ model Diretorate {
   id           String       @id @default(uuid())
   name         String
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime?
   accountId    String?
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
@@ -105,7 +105,7 @@ model Rbac {
   value        Json?
   accountId    String?
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime?
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   account  Account?  @relation("rbacAccounts", fields: [accountId], references: [id])
@@ -117,10 +117,9 @@ model Folder {
   parentId     String?
   accountId    String
   folderName   String
-  source       String
-  pwd          String?
+  source       Json
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime?
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
   parent         Folder?         @relation("children", fields: [parentId], references: [id])
@@ -139,7 +138,7 @@ model File {
   fileSize     Int
   fileType     String
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime?
   accountId    String
   recordStatus RecordStatus @default(NOT_ACTIVE)
 

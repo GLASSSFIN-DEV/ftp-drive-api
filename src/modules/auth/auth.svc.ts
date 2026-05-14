@@ -7,7 +7,7 @@ import { JWTPayload } from "hono/utils/jwt/types";
 import { decodeBase64 } from "hono/utils/encode";
 import { Context } from "hono";
 import { InputJsonValue } from "@prisma/client/runtime/client";
-import { IOkResponse } from "@/types/api.res";
+import { IOkResponse } from "@/types/common";
 
 interface IRepositoryAuth {
     login(c: Context): Promise<ResObj | HttpException>;

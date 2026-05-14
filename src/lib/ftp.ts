@@ -1,13 +1,13 @@
 
 import { HttpException } from '@/common/http-exception'
 import { env } from '@/config'
-import { IOkResponse } from '@/types/api.res'
+import { IOkResponse } from '@/types/common'
 import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
 import { PassThrough } from 'stream'
 import { lookup } from 'mime-types'
 
 interface IFtpConfig { secure: boolean | 'implicit' }
-interface IFtpLibrary {
+export interface IFtpLibrary {
     uploadFile(remotePath: string, obj: { localPath: string; fileName: string }): Promise<IOkResponse | HttpException>;
     uploadFolder(localPath: string, remotePath: string): Promise<IOkResponse | HttpException>;
     streamFile(remotePath: string, fileName: string): Promise<{ buffer: Buffer; contentType: string | boolean } | HttpException>;
@@ -15,13 +15,14 @@ interface IFtpLibrary {
     rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse> | HttpException>;
     removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse> | HttpException>;
     removeDir(remotePath: string): Promise<IOkResponse<FTPResponse> | HttpException>;
+    folderExist(remotePath: string): Promise<boolean | HttpException>;
 }
 
 export class FtpLibrary implements IFtpLibrary {
     private client: Client = new Client();
     private port: number = 990;
 
-    constructor (port: number) {
+    constructor (port: number = 990) {
         this.client = new Client()
         this.port = port;
     }
@@ -213,6 +214,17 @@ export class FtpLibrary implements IFtpLibrary {
             messages: ['Success remove folder'],
             payload: res
         } satisfies IOkResponse
+    }
+
+    /**
+    * 
+    * @param remotePath 
+    */
+    async folderExist(remotePath: string): Promise<boolean | HttpException> {
+        await this.connect()
+        await this.client.ensureDir(remotePath)
+
+        return true
     }
 
 }
