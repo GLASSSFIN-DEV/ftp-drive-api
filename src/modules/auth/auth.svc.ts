@@ -10,9 +10,9 @@ import { InputJsonValue } from "@prisma/client/runtime/client";
 import { IOkResponse } from "@/types/common";
 
 interface IRepositoryAuth {
-    login(c: Context): Promise<ResObj | HttpException>;
-    logout(c: Context): Promise<IOkResponse | HttpException>;
-    refresh(c: Context): Promise<ResObj | HttpException>;
+    login(c: Context): Promise<ResObj>;
+    logout(c: Context): Promise<IOkResponse>;
+    refresh(c: Context): Promise<ResObj>;
 }
 
 export interface ResObj {
@@ -71,7 +71,7 @@ export class Auth implements IRepositoryAuth {
      * @param c 
      * @returns 
      */
-    async logout(c: Context): Promise<IOkResponse | HttpException> {
+    async logout(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         await prismaProxy.session.updateMany({
             data: { recordStatus: 'NOT_ACTIVE' },
@@ -85,7 +85,7 @@ export class Auth implements IRepositoryAuth {
      * 
      * @param c 
      */
-    async refresh(c: Context): Promise<ResObj | HttpException<unknown>> {
+    async refresh(c: Context): Promise<ResObj> {
         return { 
             accessToken: "",
             refreshToken: "",

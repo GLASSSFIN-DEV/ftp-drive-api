@@ -36,11 +36,11 @@ interface IFolderObj {
 
 interface IFolderSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; }
 export interface IRepositoryFolder {
-    newFolder(c: Context): Promise<IOkResponse | HttpException>;
-    changeFolder(c: Context): Promise<IOkResponse | HttpException>;
-    removeFolder(c: Context): Promise<IOkResponse | HttpException>;
-    lists(c: Context): Promise<IItemPagination<IFolderObj[]> | HttpException>;
-    get(c: Context): Promise<IOkResponse<IFolderObj | null> | HttpException>;
+    newFolder(c: Context): Promise<IOkResponse>;
+    changeFolder(c: Context): Promise<IOkResponse>;
+    removeFolder(c: Context): Promise<IOkResponse>;
+    lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
+    get(c: Context): Promise<IOkResponse<IFolderObj | null>>;
     queryPath(folderId: string): Promise<string>;
 }
 
@@ -83,7 +83,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param c 
      * @returns 
      */
-    async newFolder(c: Context): Promise<IOkResponse | HttpException> {
+    async newFolder(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const obj: FolderNewDto = c.get('validatedBody') as FolderNewDto
         const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId } })
@@ -135,7 +135,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param c 
      * @returns 
      */
-    async changeFolder(c: Context): Promise<IOkResponse | HttpException> {
+    async changeFolder(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const obj: FolderChangeDto = c.get('validatedBody') as FolderChangeDto
         const id = c.req.param('id') as string
@@ -198,7 +198,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * 
      * @param c 
      */
-    async removeFolder(c: Context): Promise<IOkResponse | HttpException> {
+    async removeFolder(c: Context): Promise<IOkResponse> {
         const id = c.req.param('id') as string
         const exist = await prismaProxy.folder.findFirst({ where: { id } })
 
@@ -233,7 +233,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * 
      * @param c 
      */
-    async lists(c: Context): Promise<IItemPagination<IFolderObj[]> | HttpException> {
+    async lists(c: Context): Promise<IItemPagination<IFolderObj[]>> {
         const account = c.get('account')
         const { page, pageSize, keyword, startDate, endDate } = c.req.query()
         const where: FolderWhereInput = {
@@ -303,7 +303,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * 
      * @param c 
      */
-    async get(c: Context): Promise<IOkResponse<IFolderObj | null> | HttpException> {
+    async get(c: Context): Promise<IOkResponse<IFolderObj | null>> {
         const id = c.req.param('id')
         const item = await prismaProxy.folder.findFirst({
             where: { id },

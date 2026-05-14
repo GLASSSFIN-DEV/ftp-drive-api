@@ -33,11 +33,11 @@ interface IFileObj {
 
 interface IFileSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; fileHash?: FTPResponse }
 export interface IRepositoryFile {
-    newFile(c: Context): Promise<IOkResponse | HttpException>;
-    changeFile(c: Context): Promise<IOkResponse | HttpException>;
-    removeFile(c: Context): Promise<IOkResponse | HttpException>;
-    lists(c: Context): Promise<IItemPagination<IFileObj[]> | HttpException>;
-    get(c: Context): Promise<IOkResponse<IFileObj | null> | HttpException>;
+    newFile(c: Context): Promise<IOkResponse>;
+    changeFile(c: Context): Promise<IOkResponse>;
+    removeFile(c: Context): Promise<IOkResponse>;
+    lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
+    get(c: Context): Promise<IOkResponse<IFileObj | null>>;
 }
 
 export class RepositoryFile implements IRepositoryFile {
@@ -55,7 +55,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async newFile(c: Context): Promise<IOkResponse | HttpException> {
+    async newFile(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const obj: FileNewDto = c.get('validatedBody') as FileNewDto
         const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId } })
@@ -103,7 +103,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async changeFile(c: Context): Promise<IOkResponse | HttpException> {
+    async changeFile(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
         const id = c.req.param('id')
         const obj: FileChangeDto = c.get('validatedBody') as FileChangeDto
@@ -174,7 +174,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async removeFile(c: Context): Promise<IOkResponse | HttpException> {
+    async removeFile(c: Context): Promise<IOkResponse> {
         const id = c.req.param('id')
         const exist = await prismaProxy.file.findFirst({ where: { id } })
 
@@ -202,7 +202,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async lists(c: Context): Promise<IItemPagination<IFileObj[]> | HttpException> {
+    async lists(c: Context): Promise<IItemPagination<IFileObj[]>> {
         const account = c.get('account')
         const { page, pageSize, keyword, startDate, endDate } = c.req.query()
         const where: FileWhereInput = {
@@ -264,7 +264,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async get(c: Context): Promise<IOkResponse<IFileObj | null> | HttpException> {
+    async get(c: Context): Promise<IOkResponse<IFileObj | null>> {
         const id = c.req.param('id')
         const item = await prismaProxy.file.findFirst({
             where: { id },
