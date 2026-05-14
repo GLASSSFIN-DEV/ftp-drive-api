@@ -3,8 +3,8 @@ import { JsonValue } from "@prisma/client/runtime/client";
 export interface IAccount {
     id: string;
     username: string;
-    fullname?: string;
-    email: string;
+    fullname?: string | null;
+    email?: string | null;
     provider: string;
     rbacId: string;
     rbacName: string;

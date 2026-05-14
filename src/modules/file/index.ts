@@ -2,27 +2,28 @@ import RequestValidator from '@/middleware/req.validator'
 import { Hono } from 'hono'
 import { RepositoryFile } from '@/modules/file/file.svc'
 import { FileChangeDto, FileNewDto } from '@/dto/file.dto'
+import AuthConsent from '@/middleware/auth.validator'
 
 const router = new Hono()
 const fileService = new RepositoryFile()
 
-router.post('/file', RequestValidator.validate(FileNewDto), async (c) => {
+router.post('/file', RequestValidator.validate(FileNewDto), AuthConsent.validate(), async (c) => {
     const value = await fileService.newFile(c)
     return c.json(value)
 })
-router.put('/file/:id', RequestValidator.validate(FileChangeDto), async (c) => {
+router.put('/file/:id', RequestValidator.validate(FileChangeDto), AuthConsent.validate(), async (c) => {
     const value = await fileService.changeFile(c)
     return c.json(value)
 })
-router.delete('/file/:id', async (c) => {
+router.delete('/file/:id', AuthConsent.validate(), async (c) => {
     const value = await fileService.removeFile(c)
     return c.json(value)
 })
-router.get('/files', async (c) => {
+router.get('/files', AuthConsent.validate(), async (c) => {
     const value = await fileService.lists(c)
     return c.json(value)
 })
-router.get('/file/:id', async (c) => {
+router.get('/file/:id', AuthConsent.validate(), async (c) => {
     const value = await fileService.get(c)
     return c.json(value)
 })

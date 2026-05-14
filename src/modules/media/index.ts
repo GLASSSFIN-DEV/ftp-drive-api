@@ -6,10 +6,11 @@ import { StatusCodes } from 'http-status-codes'
 import RequestValidator from '@/middleware/req.validator'
 import { MediaDropDto, MediaStreamDto } from '@/dto/media.dto'
 import { lookup } from 'mime-types'
+import AuthConsent from '@/middleware/auth.validator'
 
 const router = new Hono()
 
-router.post('/upload', async (c) => {
+router.post('/upload', AuthConsent.validate(), async (c) => {
     const body = await c.req.parseBody()
     const file = body['file']
     const site = c.req.query('site')
@@ -34,7 +35,7 @@ router.post('/upload', async (c) => {
     return c.json({ upload: res.payload, file })
 })
 
-router.post('/uploads', async (c) => {
+router.post('/uploads', AuthConsent.validate(), async (c) => {
     const body = await c.req.parseBody({ all: true })
     const rawFiles = body['files']
     const site = c.req.query('site')
@@ -66,7 +67,7 @@ router.post('/uploads', async (c) => {
     return c.json(res)
 })
 
-router.post('/upload/folder', async (c) => {
+router.post('/upload/folder', AuthConsent.validate(), async (c) => {
     const body = await c.req.parseBody({ all: true })
     const rawFiles = body['files']
     const rawPaths = body['paths[]']
@@ -120,7 +121,7 @@ router.post('/upload/folder', async (c) => {
     return c.json({ res, dirs })
 })
 
-router.post('/drop', RequestValidator.validate(MediaDropDto), async (c) => {
+router.post('/drop', RequestValidator.validate(MediaDropDto), AuthConsent.validate(), async (c) => {
     const body = c.get('validatedBody') as MediaDropDto
     const ftpLibrary = new FtpLibrary()
     const res = await ftpLibrary.removeFile(body.remotePath, body.fileName)
@@ -128,7 +129,7 @@ router.post('/drop', RequestValidator.validate(MediaDropDto), async (c) => {
     return c.json(res)
 })
 
-router.post('/stream', RequestValidator.validate(MediaStreamDto), async (c) => {
+router.post('/stream', RequestValidator.validate(MediaStreamDto), AuthConsent.validate(), async (c) => {
     const body = c.get('validatedBody') as MediaStreamDto
     const ftpLibrary = new FtpLibrary()
     const res = await ftpLibrary.streamFile(body.remotePath, body.fileName)
