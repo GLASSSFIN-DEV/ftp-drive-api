@@ -27,6 +27,10 @@ router.get('/folder/:id', AuthConsent.validate(), async (c) => {
     const value = await folderService.get(c)
     return c.json(value)
 })
+router.get('/my-folders', AuthConsent.validate(), async (c) => {
+    const value = await folderService.myFolders(c)
+    return c.json(value)
+})
 
 
 export default router

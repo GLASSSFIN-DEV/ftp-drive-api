@@ -50,6 +50,7 @@ export interface IRepositoryFile {
     removeFile(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
     get(c: Context): Promise<IOkResponse<IFileObj | null>>;
+    myFiles(c: Context): Promise<IFileObj[]>;
 }
 
 export class RepositoryFile implements IRepositoryFile {
@@ -346,5 +347,51 @@ export class RepositoryFile implements IRepositoryFile {
                 }
             } : null
         }
+    }
+
+    /**
+     * 
+     * @param c 
+     */
+    async myFiles(c: Context): Promise<IFileObj[]> {
+        const account = c.get('account')
+        const items: IFileObj[] = await prismaProxy.file.findMany({
+            where: { accountId: account.id },
+            select: {
+                id: true,
+                fileName: true,
+                fileSize: true,
+                fileType: true,
+                createdAt: true,
+                updatedAt: true,
+                source: true,
+                accountId: true,
+                account: {
+                    select: {
+                        fullname: true,
+                        username: true
+                    }
+                },
+                folderId: true,
+                folder: {
+                    select: {
+                        folderName: true
+                    }
+                },
+                fileSharings: {
+                    select: {
+                        id: true,
+                        account: {
+                            select: {
+                                username: true,
+                                fullname: true,
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        return items
     }
 }

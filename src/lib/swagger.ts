@@ -525,7 +525,33 @@ export const definition = {
         },
       },
     },
-
+    '/v1/my-folders': {
+      get: {
+        tags: ['Folder'],
+        summary: 'My Folders',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    
     // File
     '/v1/file': {
       post: {
@@ -706,8 +732,8 @@ export const definition = {
     },
     '/v1/files': {
       get: {
-        tags: ['Folder'],
-        summary: 'Folders',
+        tags: ['File'],
+        summary: 'Files',
         security: [
           {
             BearerAuth: [],
@@ -748,6 +774,32 @@ export const definition = {
             required: false,
             schema: { type: "string" },
             description: "End date period",
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/my-files': {
+      get: {
+        tags: ['File'],
+        summary: 'My Files',
+        security: [
+          {
+            BearerAuth: [],
           },
         ],
         responses: {

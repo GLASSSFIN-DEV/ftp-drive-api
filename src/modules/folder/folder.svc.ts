@@ -54,6 +54,7 @@ export interface IRepositoryFolder {
     lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
     get(c: Context): Promise<IOkResponse<IFolderObj | null>>;
     queryPath(folderId: string): Promise<string>;
+    myFolders(c: Context): Promise<IFolderObj[]>;
 }
 
 export class RepositoryFolder implements IRepositoryFolder {
@@ -397,5 +398,59 @@ export class RepositoryFolder implements IRepositoryFolder {
                 }
             } : null
         }
+    }
+
+    /**
+     * 
+     * @param c 
+     */
+    async myFolders(c: Context): Promise<IFolderObj[]> {
+        const account = c.get('account')
+        const items: IFolderObj[] = await prismaProxy.folder.findMany({ 
+            where: { accountId: account.id },
+            select: {
+                id: true,
+                folderName: true,
+                createdAt: true,
+                updatedAt: true,
+                source: true,
+                accountId: true,
+                account: {
+                    select: {
+                        fullname: true,
+                        username: true
+                    }
+                },
+                parentId: true,
+                parent: {
+                    select: {
+                        folderName: true
+                    }
+                },
+                folders: {
+                    select: {
+                        _count: {
+                            select: {
+                                folders: true
+                            }
+                        },
+                        folderName: true,
+                    }
+                },
+                fileSharings: {
+                    select: {
+                        id: true,
+                        account: {
+                            select: {
+                                username: true,
+                                fullname: true,
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        return items
     }
 }
