@@ -1,4 +1,3 @@
-import { Trace } from "@/generated/prisma/client";
 import prismaProxy from "@/lib/prisma";
 import { getContext } from "hono/context-storage";
 import { MiddlewareHandler } from "hono/types";
@@ -13,7 +12,7 @@ export function useTelemetry(): MiddlewareHandler {
     queueMicrotask(async () => {
       try {
         const context = getContext()
-        const data: Trace = {
+        const data = {
             id: context.get('traceId'),
             method: c.req.method,
             url: c.req.url,

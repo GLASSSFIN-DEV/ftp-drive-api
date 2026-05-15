@@ -62,3 +62,6 @@ RULE:
 7. kasih chmod ke file or folder yg diupload sesuai dengan user login
 8. folder sharing impact bottom top
 9. file sharing impact to top
+
+https://sftpcloud.io/tools/free-ftp-server
+cuma 1 jam
