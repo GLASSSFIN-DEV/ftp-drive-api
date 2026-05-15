@@ -155,7 +155,8 @@ router.get('/media/site', AuthConsent.validate(), async (c) => {
         }
     })
 
-    return c.json({ messages: [], statusCode: StatusCodes.OK, payload: sites } satisfies IOkResponse)
+    const value = sites?.json as { [key: string]: { port: number; dir: string; } }
+    return c.json({ messages: [], statusCode: StatusCodes.OK, payload: value } satisfies IOkResponse)
 })
 
 export default router
