@@ -1,5 +1,3 @@
-import { LoginDto } from '@/dto/login.dto'
-import RequestValidator from '@/middleware/req.validator'
 import { Hono } from 'hono'
 import { Auth } from '@/modules/auth/auth.svc'
 import AuthConsent from '@/middleware/auth.validator'
@@ -9,10 +7,10 @@ const router = new Hono()
 const authService = new Auth()
 const oautService = new RepositoryGOAuth()
 
-// router.post('/auth/login', RequestValidator.validate(LoginDto), async (c) => {
-//     const value = await authService.login(c)
-//     return c.json(value)
-// })
+router.get('/auth/users', AuthConsent.validate(), async (c) => {
+    const value = await authService.users(c)
+    return c.json(value)
+})
 
 router.get('/auth/logout', AuthConsent.validate(), async (c) => {
     const value = await authService.logout(c)
@@ -28,7 +26,6 @@ router.get('/oauth/google', async (c) => {
     const value = await oautService.handshake(c)
     const url = value.payload as string
 
-    // return c.text(url)
     return c.redirect(url)
 })
 

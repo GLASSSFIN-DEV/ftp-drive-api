@@ -12,6 +12,14 @@ interface IRepositoryAuth {
     login(c: Context): Promise<ResObj>;
     logout(c: Context): Promise<IOkResponse>;
     refresh(c: Context): Promise<ResObj>;
+    users(c: Context): Promise<IUserObj[]>;
+}
+
+interface IUserObj {
+    id: string;
+    username: string;
+    fullname: string | null;
+    email: string | null;
 }
 
 export interface ResObj {
@@ -100,5 +108,22 @@ export class Auth implements IRepositoryAuth {
             refreshToken,
             expireAt: env.JWT_EXPIRE
         } satisfies ResObj
+    }
+
+    /**
+     * 
+     * @param c 
+     */
+    async users(c: Context): Promise<IUserObj[]> {
+        const items: IUserObj[] = await prismaProxy.account.findMany({
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                fullname: true,
+            }
+        })
+        
+        return items
     }
 }

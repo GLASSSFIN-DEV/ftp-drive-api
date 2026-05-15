@@ -136,45 +136,32 @@ export const definition = {
   ],
   paths: {
     // Auth
-    // '/v1/auth/login': {
-    //   post: {
-    //     tags: ['Auth'],
-    //     summary: 'Login',
-    //     requestBody: {
-    //       required: true,
-    //       content: {
-    //         'application/json': {
-    //           schema: {
-    //             $ref:
-    //               '#/components/schemas/LoginDto',
-    //           },
-    //         },
-    //       },
-    //     },
-    //     responses: {
-    //       200: {
-    //         description: 'Success',
-    //         content: {
-    //           "application/json": {
-    //             schema: {
-    //               $ref: "#/components/schemas/OkResponse",
-    //             },
-    //           },
-    //         },
-    //       },
-    //       400: {
-    //         description: 'Bad Request',
-    //         content: {
-    //           "application/json": {
-    //             schema: {
-    //               $ref: "#/components/schemas/FailResponse",
-    //             },
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    // },
+    '/v1/auth/users': {
+      get: {
+        tags: ['Auth'],
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        summary: 'User Lists',
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     '/v1/auth/logout': {
       get: {
         tags: ['Auth'],
@@ -216,7 +203,7 @@ export const definition = {
             BearerAuth: [],
           },
         ],
-        summary: 'Logout',
+        summary: 'Refresh Token',
         responses: {
           200: {
             description: 'Success',
@@ -244,7 +231,7 @@ export const definition = {
     '/v1/oauth/google': {
       get: {
         tags: ['Auth'],
-        summary: 'Logout',
+        summary: 'Login OAuth with Google',
         responses: {
           200: {
             description: 'Success',
@@ -265,7 +252,7 @@ export const definition = {
     '/v1/oauth/google/callback': {
       get: {
         tags: ['Auth'],
-        summary: 'Logout',
+        summary: 'Callback for validate the redirect/consent provider scope',
         responses: {
           200: {
             description: 'Success',
