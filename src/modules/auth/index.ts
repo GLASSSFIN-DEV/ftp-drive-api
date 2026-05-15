@@ -12,6 +12,11 @@ router.get('/auth/users', AuthConsent.validate(), async (c) => {
     return c.json(value)
 })
 
+router.get('/auth/me', AuthConsent.validate(), async (c) => {
+    const account = c.get('account')
+    return c.json(account)
+})
+
 router.get('/auth/logout', AuthConsent.validate(), async (c) => {
     const value = await authService.logout(c)
     return c.json(value)

@@ -162,6 +162,32 @@ export const definition = {
         },
       },
     },
+    '/v1/auth/me': {
+      get: {
+        tags: ['Auth'],
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        summary: 'My Profile',
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     '/v1/auth/logout': {
       get: {
         tags: ['Auth'],
