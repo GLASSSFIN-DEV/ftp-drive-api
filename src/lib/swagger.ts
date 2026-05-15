@@ -1185,7 +1185,7 @@ export const definition = {
     },
 
     // Sharing
-    '/v1/sharing/file-sharing': {
+    '/v1/sharing/file': {
       post: {
         tags: ['Sharing'],
         summary: 'Create file sharing',
@@ -1217,7 +1217,7 @@ export const definition = {
         },
       },
     },
-    '/v1/sharing/file-sharing/{id}': {
+    '/v1/sharing/file/{id}': {
       get: {
         tags: ['Sharing'],
         summary: 'Get file sharing detail',
@@ -1281,7 +1281,7 @@ export const definition = {
         },
       },
     },
-    '/v1/sharing/folder-sharing': {
+    '/v1/sharing/folder': {
       post: {
         tags: ['Sharing'],
         summary: 'Create folder sharing',
@@ -1313,7 +1313,7 @@ export const definition = {
         },
       },
     },
-    '/v1/sharing/folder-sharing/{id}': {
+    '/v1/sharing/folder/{id}': {
       get: {
         tags: ['Sharing'],
         summary: 'Get folder sharing detail',
