@@ -69,7 +69,8 @@ export class RepositoryGOAuth implements IRepositoryGOAuth {
                 fullname: googleUser.name,
                 email: googleUser.email,
                 provider: 'google-oauth',
-                accountInfo: { ...googleUser }
+                accountInfo: { ...googleUser },
+                recordStatus: 'ACTIVE'
             },
             where: {
                 username: googleUser.email,

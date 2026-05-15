@@ -6,9 +6,9 @@ export interface IAccount {
     fullname?: string | null;
     email?: string | null;
     provider: string;
-    rbacId: string;
-    rbacName: string;
-    rbac: JsonValue;
+    rbacId?: string | null;
+    rbacName?: string | null;
+    rbac?: JsonValue | null;
 }
 
 declare module 'hono' {

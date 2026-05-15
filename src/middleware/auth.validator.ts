@@ -58,9 +58,9 @@ export default class AuthConsent {
           fullname: user.fullname,
           email: user.email,
           provider: user.provider,
-          rbacId: user.rbacId,
-          rbacName: user.rbac.name,
-          rbac: user.rbac.value
+          rbacId: user?.rbacId,
+          rbacName: user.rbac?.name,
+          rbac: user.rbac?.value
         }
 
         c.set('account', iac)

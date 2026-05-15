@@ -13,6 +13,7 @@ import modules from '@/modules/index'
 import { swaggerUI } from '@hono/swagger-ui'
 import { definition } from './lib/swagger'
 import { useTelemetry } from './middleware/logger.middleware'
+import { cors } from 'hono/cors'
 
 type HonoVariable = {
   Variables: {
@@ -39,6 +40,7 @@ app.use('*', async (c, next) => {
 })
 
 // setup middlewares
+app.use('*', cors())
 app.use('*', useTelemetry());
 app.use('*', timing())
 app.use('*', compress())
