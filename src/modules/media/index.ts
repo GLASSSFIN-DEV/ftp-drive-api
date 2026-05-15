@@ -14,6 +14,9 @@ import { IOkResponse } from '@/types/common'
 const router = new Hono()
 
 router.post('/media/upload', AuthConsent.validate(), async (c) => {
+    const account = c.get('account')
+    const homePath = account.homePath
+
     const body = await c.req.parseBody()
     const file = body['file']
     const site = c.req.query('site')
@@ -39,6 +42,9 @@ router.post('/media/upload', AuthConsent.validate(), async (c) => {
 })
 
 router.post('/media/uploads', AuthConsent.validate(), async (c) => {
+    const account = c.get('account')
+    const homePath = account.homePath
+
     const body = await c.req.parseBody({ all: true })
     const rawFiles = body['files']
     const site = c.req.query('site')
@@ -71,6 +77,9 @@ router.post('/media/uploads', AuthConsent.validate(), async (c) => {
 })
 
 router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
+    const account = c.get('account')
+    const homePath = account.homePath
+
     const body = await c.req.parseBody({ all: true })
     const rawFiles = body['files']
     const rawPaths = body['paths[]']
@@ -125,6 +134,9 @@ router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
 })
 
 router.post('/media/drop', RequestValidator.validate(MediaDropDto), AuthConsent.validate(), async (c) => {
+    const account = c.get('account')
+    const homePath = account.homePath
+    
     const body = c.get('validatedBody') as MediaDropDto
     const ftpLibrary = new FtpLibrary()
     const res = await ftpLibrary.removeFile(body.remotePath, body.fileName)

@@ -8,7 +8,7 @@ import { env } from '@/config'
 import prismaProxy from '@/lib/prisma'
 import { JWTPayload } from 'hono/utils/jwt/types'
 
-function homePath(value: string) {
+export function homePath(value: string) {
   return (value || "")
     .split("@")[0]
     .replace(/[^a-zA-Z0-9]/g, "_")
