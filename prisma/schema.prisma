@@ -21,14 +21,6 @@ enum RecordStatus {
   @@schema("drive")
 }
 
-enum SubmissionAction {
-  WAITING
-  APPROVED
-  REJECTED
-
-  @@schema("drive")
-}
-
 enum SharePermission {
   READ_ONLY
   READ_WRITE
@@ -62,9 +54,7 @@ model Account {
   directorate             Diretorate?     @relation(fields: [dirId], references: [id])
   rbac                    Rbac?           @relation(fields: [rbacId], references: [id])
   directorates            Diretorate[]    @relation("dirAccounts")
-  submissions             Submission[]    @relation("subAccounts")
   rbacs                   Rbac[]          @relation("rbacAccounts")
-  subsActionBy            Submission[]    @relation("subActionByAccounts")
   folders                 Folder[]        @relation("folderAccounts")
   files                   File[]          @relation("fileAccounts")
   traces                  Trace[]         @relation("traceAccounts")
@@ -116,28 +106,6 @@ model Diretorate {
   @@index([recordStatus])
   @@index([createdAt(sort: Desc)])
   @@index([name])
-  @@schema("drive")
-}
-
-model Submission {
-  id               String           @id @default(uuid())
-  accountId        String
-  status           SubmissionAction @default(WAITING)
-  verificationCode String           @unique
-  expiredAt        DateTime
-  actionBy         String
-  actionJson       Json?
-  actionAt         DateTime?
-  createdAt        DateTime         @default(now())
-
-  account         Account @relation("subAccounts", fields: [accountId], references: [id])
-  accountActionBy Account @relation("subActionByAccounts", fields: [actionBy], references: [id])
-
-  @@index([accountId])
-  @@index([actionBy])
-  @@index([status])
-  @@index([expiredAt])
-  @@index([createdAt(sort: Desc)])
   @@schema("drive")
 }
 
