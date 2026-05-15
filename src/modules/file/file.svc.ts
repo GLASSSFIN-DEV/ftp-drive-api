@@ -41,7 +41,7 @@ interface IFileObj {
         };
         id: string;
     }[];
-}[]
+}
 
 interface IFileSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; fileHash?: FTPResponse }
 export interface IRepositoryFile {

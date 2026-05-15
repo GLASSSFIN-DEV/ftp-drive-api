@@ -44,7 +44,7 @@ interface IFolderObj {
         };
         id: string;
     }[];
-}[]
+}
 
 interface IFolderSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; }
 export interface IRepositoryFolder {

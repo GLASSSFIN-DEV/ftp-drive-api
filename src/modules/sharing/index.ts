@@ -10,29 +10,29 @@ const router = new Hono()
 const fileSharing = new RepositoryFileSharing()
 const folderSharing = new RepositoryFolderSharing
 
-router.post('/sharing/file-sharing', RequestValidator.validate(FileSharingNewDto), AuthConsent.validate(), async (c) => {
+router.post('/sharing/file', RequestValidator.validate(FileSharingNewDto), AuthConsent.validate(), async (c) => {
     const value = await fileSharing.fileSharingNew(c)
     return c.json(value)
 })
-router.delete('/sharing/file-sharing/:id', AuthConsent.validate(), async (c) => {
+router.delete('/sharing/file/:id', AuthConsent.validate(), async (c) => {
     const value = await fileSharing.fileSharingDrop(c)
     return c.json(value)
 })
-router.get('/sharing/file-sharing/:id', AuthConsent.validate(), async (c) => {
+router.get('/sharing/file/:id', AuthConsent.validate(), async (c) => {
     const value = await fileSharing.get(c)
     return c.json(value)
 })
 
 
-router.post('/sharing/folder-sharing', RequestValidator.validate(FolderSharingNewDto), AuthConsent.validate(), async (c) => {
+router.post('/sharing/folder', RequestValidator.validate(FolderSharingNewDto), AuthConsent.validate(), async (c) => {
     const value = await folderSharing.folderSharingNew(c)
     return c.json(value)
 })
-router.delete('/sharing/folder-sharing/:id', AuthConsent.validate(), async (c) => {
+router.delete('/sharing/folder/:id', AuthConsent.validate(), async (c) => {
     const value = await folderSharing.folderSharingDrop(c)
     return c.json(value)
 })
-router.get('/sharing/folder-sharing/:id', AuthConsent.validate(), async (c) => {
+router.get('/sharing/folder/:id', AuthConsent.validate(), async (c) => {
     const value = await folderSharing.get(c)
     return c.json(value)
 })
