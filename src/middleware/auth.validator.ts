@@ -8,6 +8,12 @@ import { env } from '@/config'
 import prismaProxy from '@/lib/prisma'
 import { JWTPayload } from 'hono/utils/jwt/types'
 
+function homePath(value: string) {
+  return (value || "")
+    .split("@")[0]
+    .replace(/[^a-zA-Z0-9]/g, "_")
+}
+
 export default class AuthConsent {
   static validate = () => {
     return createMiddleware(async (c, next) => {
@@ -21,7 +27,7 @@ export default class AuthConsent {
 
         const token = authorization.replace(/^Bearer\s+/i, '')
         const payload = await verify(token, env.JWT_SECRET, { alg: 'HS256' }) as JWTPayload & { sub: string; role: string; }
-        const user = await prismaProxy.account.findFirst({ 
+        const user = await prismaProxy.account.findFirst({
           select: {
             id: true,
             username: true,
@@ -36,7 +42,7 @@ export default class AuthConsent {
               }
             }
           },
-          where: { id: payload.sub, recordStatus: 'ACTIVE' } 
+          where: { id: payload.sub, recordStatus: 'ACTIVE' }
         })
 
         if (!user) throw new HttpException({
@@ -60,7 +66,8 @@ export default class AuthConsent {
           provider: user.provider,
           rbacId: user?.rbacId,
           rbacName: user.rbac?.name,
-          rbac: user.rbac?.value
+          rbac: user.rbac?.value,
+          homePath: homePath(user.username),
         }
 
         c.set('account', iac)

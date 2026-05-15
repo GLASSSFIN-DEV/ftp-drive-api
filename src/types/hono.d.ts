@@ -9,6 +9,7 @@ export interface IAccount {
     rbacId?: string | null;
     rbacName?: string | null;
     rbac?: JsonValue | null;
+    homePath: string;
 }
 
 declare module 'hono' {
