@@ -8,3 +8,8 @@ export class SubmissionResolveDto {
     @IsEnum(SubmissionAction)
     subAction!: SubmissionAction 
 }
+
+export class SubmissionCreateDto {
+    @IsString()
+    username!: string;
+}

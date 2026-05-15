@@ -5,8 +5,8 @@ import { sign } from 'hono/jwt';
 import { env } from '@/config';
 import { JWTPayload } from "hono/utils/jwt/types";
 import { Context } from "hono";
-import { InputJsonValue } from "@prisma/client/runtime/client";
 import { IOkResponse } from "@/types/common";
+import { StatusCodes } from "http-status-codes";
 
 interface IRepositoryAuth {
     login(c: Context): Promise<ResObj>;
@@ -19,6 +19,7 @@ export interface ResObj {
     refreshToken: string;
     expireAt: string;
     basePath?: string;
+    [key: string]: unknown
 }
 
 export class Auth implements IRepositoryAuth {
@@ -48,14 +49,6 @@ export class Auth implements IRepositoryAuth {
 
         await prismaProxy.$transaction(async (tx) => {
             await tx.session.create({ data: { accountId: account.id, jwtHash: accessToken, recordStatus: 'ACTIVE' } })
-            await tx.traceSpan.create({
-                data: {
-                    traceId: c.get('traceId'),
-                    json: { obj, account } as unknown as InputJsonValue,
-                    context: `[body]`,
-                    durationMs: 0,
-                }
-            })
         })
 
         return {
@@ -77,7 +70,7 @@ export class Auth implements IRepositoryAuth {
             where: { accountId: account.id, recordStatus: 'ACTIVE' }
         })
 
-        return { statusCode: 200, messages: ['Logged out!'] } 
+        return { statusCode: StatusCodes.OK, messages: ['Logged out!'] } 
     }
 
     /**
@@ -85,10 +78,27 @@ export class Auth implements IRepositoryAuth {
      * @param c 
      */
     async refresh(c: Context): Promise<ResObj> {
-        return { 
-            accessToken: "",
-            refreshToken: "",
-            expireAt: '1d'
-        }
+        const account = c.get('account')
+        const find = await prismaProxy.account.findFirst({ where: { id: account.id } })
+
+        if (!find) throw new HttpException({
+            errCode: 'ACCOUNT_NOT_FOUND',
+            statusCode: 404,
+            messages: ['Your account isn`t found']
+        })
+
+        const _o: JWTPayload = { sub: account.id, role: account.rbacId }
+        const accessToken = await sign(_o, env.JWT_SECRET, 'HS256')
+        const refreshToken = await sign({ sub: account.id }, env.JWT_SECRET, 'HS256')
+
+        await prismaProxy.$transaction(async (tx) => {
+            await tx.session.create({ data: { accountId: account.id, jwtHash: accessToken, recordStatus: 'ACTIVE' } })
+        })
+
+        return {
+            accessToken,
+            refreshToken,
+            expireAt: env.JWT_EXPIRE
+        } satisfies ResObj
     }
 }

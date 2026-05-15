@@ -8,6 +8,7 @@
     "basic-ftp": "^6.0.1",
     "class-transformer": "^0.5.1",
     "class-validator-jsonschema": "^5.1.0",
+    "dayjs": "^1.11.20",
     "dotenv": "^17.4.2",
     "envalid": "^8.1.1",
     "fast-redact": "^3.5.0",

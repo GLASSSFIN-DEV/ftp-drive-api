@@ -36,6 +36,29 @@ const config = {
 
     GOOGLE_CLIENT_ID: str(),
     GOOGLE_CLIENT_SECRET: str(),
+    GOOGLE_REDIRECT_URL: str(),
 }
 
 export const env = cleanEnv(process.env, config)
+export const google = {
+  clientId: env.GOOGLE_CLIENT_ID,
+  clientSecret: env.GOOGLE_CLIENT_SECRET,
+  redirectUri: env.GOOGLE_REDIRECT_URL,
+ 
+  // Scopes we request from the user
+  scopes: [
+    'openid',
+    'email',
+    'profile',
+  ],
+ 
+  // URLs
+  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://oauth2.googleapis.com/token',
+  userInfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo',
+  tokenInfoUrl: 'https://www.googleapis.com/oauth2/v3/tokeninfo',
+ 
+  // Required scopes that MUST be present in the access token
+  // (backend validation step)
+  requiredScopes: ['openid', 'https://www.googleapis.com/auth/userinfo.email'],
+} as const;
