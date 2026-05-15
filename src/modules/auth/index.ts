@@ -28,6 +28,7 @@ router.get('/oauth/google', async (c) => {
     const value = await oautService.handshake(c)
     const url = value.payload as string
 
+    // return c.text(url)
     return c.redirect(url)
 })
 

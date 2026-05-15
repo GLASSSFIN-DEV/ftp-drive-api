@@ -1,5 +1,5 @@
 import { createLogger, format, transports, type Logger } from 'winston';
-import { env, Environments } from '@/config';
+import { env, Environments, Logs } from '@/config';
 import prismaProxy from './prisma';
 import { v7 } from 'uuid';
 import Transport from 'winston-transport';
@@ -95,7 +95,7 @@ try {
     format: logFormat,
     transports: [
       new PrismaTransport(), 
-      env.NODE_ENV === Environments.DEV ? new transports.Console() : null
+      env.LOG === Logs.VERBOSE ? new transports.Console() : null
     ].filter(notEmpty),
   });
 } catch (err) {

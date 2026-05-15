@@ -1,4 +1,3 @@
-import { Context } from "hono";
 import { google } from '@/config';
 import {
     GoogleTokenInfo,
@@ -69,8 +68,9 @@ export class GoogleOAuth implements IGoogleOAuth {
             })
         }
 
-        logger.http('[google-auth]', { ...res.json() })
-        return res.json()
+        const value = await res.json()
+        logger.http('[google-auth]', { ...value })
+        return value
     }
 
     /**

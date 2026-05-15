@@ -16,10 +16,19 @@ export enum Environments {
     STAGING = 'staging',
 }
 
+export enum Logs {
+    VERBOSE = 'verbose',
+    NONE = 'none'
+}
+
 const config = {
     NODE_ENV: str({
         default: Environments.DEV,
         choices: [...Object.values(Environments)],
+    }),
+    LOG: str({
+        default: Logs.VERBOSE,
+        choices: [...Object.values(Logs)]
     }),
     PORT: num({ default: 9000 }),
     API_URL: str({ default: 'localhost' }),
