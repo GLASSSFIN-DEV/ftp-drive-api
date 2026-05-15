@@ -13,11 +13,11 @@ export const definition = {
   host: env.API_URL,
   basePath: '/api',
   externalDocs: {
-    description: 'MakassarApi-FileDrive',
+    description: 'FileDrive',
     url: env.API_URL
   },
   info: {
-    title: "MakassarApi-FileDrive",
+    title: "FileDrive",
     version: "1.0.0",
     contact: {
       name: 'glasssfin.dev@gmail.com',
@@ -194,6 +194,81 @@ export const definition = {
                 },
               },
             },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/auth/refresh': {
+      get: {
+        tags: ['Auth'],
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        summary: 'Logout',
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OkResponse",
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/oauth/google': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Logout',
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/oauth/google/callback': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Logout',
+        responses: {
+          200: {
+            description: 'Success',
           },
           400: {
             description: 'Bad Request',

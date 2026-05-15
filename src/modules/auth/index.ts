@@ -19,6 +19,11 @@ router.get('/auth/logout', AuthConsent.validate(), async (c) => {
     return c.json(value)
 })
 
+router.get('/auth/refresh', AuthConsent.validate(), async (c) => {
+    const value = await authService.refresh(c)
+    return c.json(value)
+})
+
 router.get('/oauth/google', async (c) => {
     const value = await oautService.handshake(c)
     const url = value.payload as string

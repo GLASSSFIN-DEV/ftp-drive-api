@@ -9,6 +9,7 @@ import { StatusCodes } from "http-status-codes";
 import { env } from "@/config";
 import { v7 } from 'uuid';
 import { ResObj } from "./auth.svc";
+import logger from "@/lib/logger";
 
 export interface IRepositoryGOAuth {
     handshake(c: Context): Promise<IOkResponse<string>>;
@@ -28,6 +29,7 @@ export class RepositoryGOAuth implements IRepositoryGOAuth {
         const state = v7()
         const url = this.gauth.buildUrl(state)
 
+        logger.debug('[handshake]', { url })
         return {
             statusCode: StatusCodes.OK,
             messages: [],
