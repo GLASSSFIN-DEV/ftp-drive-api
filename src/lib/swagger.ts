@@ -1056,5 +1056,200 @@ export const definition = {
         },
       },
     },
+
+    // Sharing
+    '/v1/sharing/file-sharing': {
+      post: {
+        tags: ['Sharing'],
+        summary: 'Create file sharing',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/FileSharingNewDto',
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+          },
+          401: {
+            description: 'Unauthorized',
+          },
+        },
+      },
+    },
+    '/v1/sharing/file-sharing/{id}': {
+      get: {
+        tags: ['Sharing'],
+        summary: 'Get file sharing detail',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            in: 'path',
+            name: 'id',
+            required: true,
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          401: {
+            description: 'Unauthorized',
+          },
+          404: {
+            description: 'Not Found',
+          },
+        },
+      },
+      delete: {
+        tags: ['Sharing'],
+        summary: 'Delete file sharing',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            in: 'path',
+            name: 'id',
+            required: true,
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          401: {
+            description: 'Unauthorized',
+          },
+          404: {
+            description: 'Not Found',
+          },
+        },
+      },
+    },
+    '/v1/sharing/folder-sharing': {
+      post: {
+        tags: ['Sharing'],
+        summary: 'Create folder sharing',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/FolderSharingNewDto',
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+          },
+          401: {
+            description: 'Unauthorized',
+          },
+        },
+      },
+    },
+    '/v1/sharing/folder-sharing/{id}': {
+      get: {
+        tags: ['Sharing'],
+        summary: 'Get folder sharing detail',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            in: 'path',
+            name: 'id',
+            required: true,
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          401: {
+            description: 'Unauthorized',
+          },
+          404: {
+            description: 'Not Found',
+          },
+        },
+      },
+      delete: {
+        tags: ['Sharing'],
+        summary: 'Delete folder sharing',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            in: 'path',
+            name: 'id',
+            required: true,
+
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          401: {
+            description: 'Unauthorized',
+          },
+          404: {
+            description: 'Not Found',
+          },
+        },
+      },
+    },
   },
 }

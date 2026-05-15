@@ -80,7 +80,7 @@ export class RepositoryFile implements IRepositoryFile {
 
         const remotePath = await this.folderRepo.queryPath(folder.id)
         await this.ftp.folderExist(remotePath)
-        const fileHash = await this.ftp.getFileHash(remotePath, obj.fileName)
+        const fileHash = await this.ftp.send(remotePath, obj.fileName, 'XMD5')
 
         await prismaProxy.$transaction(async (tx) => {
             const source: IFileSource = {
@@ -144,7 +144,7 @@ export class RepositoryFile implements IRepositoryFile {
 
         const remotePath = await this.folderRepo.queryPath(folder.id)
         await this.ftp.folderExist(remotePath)
-        const fileHash = await this.ftp.getFileHash(remotePath, obj.fileName)
+        const fileHash = await this.ftp.send(remotePath, obj.fileName, 'XMD5')
 
         await prismaProxy.$transaction(async (tx) => {
             const source: IFileSource = {
