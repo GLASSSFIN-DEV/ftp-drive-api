@@ -136,45 +136,45 @@ export const definition = {
   ],
   paths: {
     // Auth
-    '/v1/auth/login': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Login',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref:
-                  '#/components/schemas/LoginDto',
-              },
-            },
-          },
-        },
-        responses: {
-          200: {
-            description: 'Success',
-            content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/OkResponse",
-                },
-              },
-            },
-          },
-          400: {
-            description: 'Bad Request',
-            content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FailResponse",
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    // '/v1/auth/login': {
+    //   post: {
+    //     tags: ['Auth'],
+    //     summary: 'Login',
+    //     requestBody: {
+    //       required: true,
+    //       content: {
+    //         'application/json': {
+    //           schema: {
+    //             $ref:
+    //               '#/components/schemas/LoginDto',
+    //           },
+    //         },
+    //       },
+    //     },
+    //     responses: {
+    //       200: {
+    //         description: 'Success',
+    //         content: {
+    //           "application/json": {
+    //             schema: {
+    //               $ref: "#/components/schemas/OkResponse",
+    //             },
+    //           },
+    //         },
+    //       },
+    //       400: {
+    //         description: 'Bad Request',
+    //         content: {
+    //           "application/json": {
+    //             schema: {
+    //               $ref: "#/components/schemas/FailResponse",
+    //             },
+    //           },
+    //         },
+    //       },
+    //     },
+    //   },
+    // },
     '/v1/auth/logout': {
       get: {
         tags: ['Auth'],

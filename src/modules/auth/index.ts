@@ -9,10 +9,10 @@ const router = new Hono()
 const authService = new Auth()
 const oautService = new RepositoryGOAuth()
 
-router.post('/auth/login', RequestValidator.validate(LoginDto), async (c) => {
-    const value = await authService.login(c)
-    return c.json(value)
-})
+// router.post('/auth/login', RequestValidator.validate(LoginDto), async (c) => {
+//     const value = await authService.login(c)
+//     return c.json(value)
+// })
 
 router.get('/auth/logout', AuthConsent.validate(), async (c) => {
     const value = await authService.logout(c)
