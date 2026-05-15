@@ -167,14 +167,12 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         const file = await this.ftp.getInfo(remotePath, obj.fileName)
-        if (obj.folderId !== exist.folderId) {
-            const oldPath = await this.folderRepo.queryPath(exist.folderId)
-            const newPath = await this.folderRepo.queryPath(obj.folderId)
-            await this.ftp.rename(
-                (oldPath + '/' + obj.fileName).replace(/\/+/g, '/'),
-                (newPath + '/' + obj.fileName).replace(/\/+/g, '/')
-            )
-        }
+        const oldPath = await this.folderRepo.queryPath(exist.folderId)
+        const newPath = await this.folderRepo.queryPath(obj.folderId)
+        await this.ftp.rename(
+            (oldPath + '/' + obj.fileName).replace(/\/+/g, '/'),
+            (newPath + '/' + obj.fileName).replace(/\/+/g, '/')
+        )
 
         return {
             statusCode: StatusCodes.CREATED,

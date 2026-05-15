@@ -174,8 +174,9 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
-        const oldPath = await this.queryPath(parent.id)
-        const newPath = (oldPath + '/' + obj.folderName).replace(/\/+/g, '/')
+        const remotePath = await this.queryPath(parent.id)
+        const oldPath = await this.queryPath(exist.id)
+        const newPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
         await this.ftp.folderExist(oldPath)
 
         await prismaProxy.$transaction(async (tx) => {
@@ -198,8 +199,9 @@ export class RepositoryFolder implements IRepositoryFolder {
             })
         })
 
+        if (exist.folderName !== obj.folderName) await this.ftp.rename(oldPath, newPath)
+        else await this.ftp.folderExist(newPath)
 
-        await this.ftp.folderExist(newPath)
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['Change Success'],
