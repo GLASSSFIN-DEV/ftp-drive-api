@@ -1,8 +1,8 @@
-import { IsEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator";
 
 export class FolderNewDto {
     @IsString()
-    @IsEmpty()
+    @IsNotEmpty()
     folderName!: string;
 
     @IsString()
@@ -10,12 +10,13 @@ export class FolderNewDto {
     parentId?: string;
 
     @IsNumber()
+    @IsPositive()
     siteId!: number;
 }
 
 export class FolderChangeDto {
     @IsString()
-    @IsEmpty()
+    @IsNotEmpty()
     folderName!: string;
 
     @IsString()
@@ -23,5 +24,6 @@ export class FolderChangeDto {
     parentId?: string;
 
     @IsNumber()
+    @IsPositive()
     siteId!: number;
 }

@@ -1,25 +1,29 @@
-import { IsEmpty, IsNumber, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsPositive, IsString } from "class-validator";
 
 export class MediaDropDto {
     @IsString()
-    @IsEmpty()
+    @IsNotEmpty()
     fileName!: string;
 
     @IsString()
+    @IsNotEmpty()
     remotePath!: string;
 
     @IsNumber()
+    @IsPositive()
     site!: number;
 }
 
 export class MediaStreamDto {
     @IsString()
-    @IsEmpty()
+    @IsNotEmpty()
     fileName!: string;
 
     @IsString()
+    @IsNotEmpty()
     remotePath!: string;
 
     @IsNumber()
+    @IsPositive()
     site!: number;
 }

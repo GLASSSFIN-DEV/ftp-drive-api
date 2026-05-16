@@ -1,8 +1,8 @@
-import { IsEmpty, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class UserNewDto {
     @IsString()
-    @IsEmpty()
+    @IsNotEmpty()
     username!: string;
 
     @IsString()
@@ -10,12 +10,15 @@ export class UserNewDto {
     fullname?: string;
 
     @IsString()
+    @IsNotEmpty()
     email!: string;
 
     @IsString()
+    @IsNotEmpty()
     dirId!: string;
 
     @IsString()
+    @IsNotEmpty()
     rbacId!: string;
 
     @IsOptional()
@@ -29,8 +32,10 @@ export class UserChangeDto {
     fullname?: string;
 
     @IsString()
+    @IsNotEmpty()
     dirId!: string;
 
     @IsString()
+    @IsNotEmpty()
     rbacId!: string;
 }

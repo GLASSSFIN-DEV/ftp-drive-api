@@ -1,9 +1,9 @@
 import { JsonObject } from "@prisma/client/runtime/client";
-import { IsEmpty, IsJSON, IsString } from "class-validator";
+import { IsNotEmpty, IsJSON, IsString } from "class-validator";
 
 export class RbacNewDto {
     @IsString()
-    @IsEmpty()
+    @IsNotEmpty()
     name!: string;
 
     @IsJSON()
