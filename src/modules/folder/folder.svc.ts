@@ -496,14 +496,14 @@ export class RepositoryFolder implements IRepositoryFolder {
                 },
                 folders: {
                     select: {
-                        _count: true
+                        folderName: true,
                     }
                 },
                 folderSharings: {
                     select: {
                         toAccount: {
                             select: {
-                                _count: true,
+                                fullname: true,
                             }
                         }
                     }
@@ -519,7 +519,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                             select: {
                                 toAccount: {
                                     select: {
-                                        _count: true,
+                                        fullname: true,
                                     }
                                 }
                             }
