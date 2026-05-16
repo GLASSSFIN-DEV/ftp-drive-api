@@ -1,7 +1,8 @@
-import { IsNumber, IsString } from "class-validator";
+import { IsEmpty, IsNumber, IsString } from "class-validator";
 
 export class MediaDropDto {
     @IsString()
+    @IsEmpty()
     fileName!: string;
 
     @IsString()
@@ -13,6 +14,7 @@ export class MediaDropDto {
 
 export class MediaStreamDto {
     @IsString()
+    @IsEmpty()
     fileName!: string;
 
     @IsString()

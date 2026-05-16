@@ -1,7 +1,8 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsEmpty, IsOptional, IsString } from "class-validator";
 
 export class UserNewDto {
     @IsString()
+    @IsEmpty()
     username!: string;
 
     @IsString()

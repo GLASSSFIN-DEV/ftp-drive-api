@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsString } from "class-validator";
+import { IsEmpty, IsInt, IsNumber, IsString } from "class-validator";
 
 export class FileNewDto {
     // create auto check to db for this decorator?
@@ -6,6 +6,7 @@ export class FileNewDto {
     folderId!: string;
 
     @IsString()
+    @IsEmpty()
     fileName!: string;
 
     @IsInt()
@@ -23,6 +24,7 @@ export class FileChangeDto {
     folderId!: string;
 
     @IsString()
+    @IsEmpty()
     fileName!: string;
 
     @IsNumber()
