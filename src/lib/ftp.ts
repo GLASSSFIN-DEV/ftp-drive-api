@@ -23,6 +23,7 @@ export interface IFtpLibrary {
     removeDir(remotePath: string): Promise<IOkResponse<FTPResponse>>;
     folderExist(remotePath: string): Promise<boolean>;
     send(remotePath: string, name: string, command: string): Promise<FTPResponse>;
+    debug(): Promise<{ workingDir: string; items: FileInfo[] }>;
 }
 
 export class FtpLibrary implements IFtpLibrary {
@@ -32,10 +33,11 @@ export class FtpLibrary implements IFtpLibrary {
     constructor(port: number = 990) {
         this.client = new Client()
         this.port = port;
+        this.client.ftp.log = (message) => logger.http(`[ftp:${port}] ${message}`)
+        this.client.ftp.verbose = true
     }
 
     private async connect() {
-        this.client.ftp.verbose = true
         const config: IFtpConfig = env.FTP_CONFIG
         const opts: AccessOptions = {
             host: env.FTP_HOST,
@@ -291,5 +293,17 @@ export class FtpLibrary implements IFtpLibrary {
         const res = await this.client.send(`XMD5 ${path.replace(/\/+/g, '/')}`)
 
         return res
+    }
+
+    /**
+     * 
+     * @returns 
+     */
+    async debug(): Promise<{ workingDir: string; items: FileInfo[] }> {
+        await this.connect()
+        const pwd = await this.client.pwd()
+        const lists = await this.client.list()
+
+        return { workingDir: pwd, items: lists } 
     }
 }

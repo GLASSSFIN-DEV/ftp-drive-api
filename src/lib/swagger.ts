@@ -133,6 +133,7 @@ export const definition = {
     { name: "Folder", description: "Folder related endpoints" },
     { name: "File", description: "File related endpoints" },
     { name: "Sharing", description: "Sharing related endpoints" },
+    { name: "Debug", description: "Debug related endpoints" },
   ],
   paths: {
     // Auth
@@ -1387,6 +1388,35 @@ export const definition = {
           },
           404: {
             description: 'Not Found',
+          },
+        },
+      },
+    },
+
+    // Debug
+    '/v1/debug/ftp/{siteId}': {
+      get: {
+        tags: ['Debug'],
+        summary: 'FTP Debug',
+        parameters: [
+          {
+            in: 'path',
+            name: 'siteId',
+            required: true,
+            schema: {
+              type: 'number',
+            },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+          },
+          401: {
+            description: 'Unauthorized',
           },
         },
       },
