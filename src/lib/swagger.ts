@@ -1395,7 +1395,7 @@ export const definition = {
 
     // Debug
     '/v1/debug/ftp/{siteId}': {
-      get: {
+      post: {
         tags: ['Debug'],
         summary: 'FTP Debug',
         parameters: [
@@ -1408,6 +1408,16 @@ export const definition = {
             },
           },
         ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/DebugFolderExistDto',
+              },
+            },
+          },
+        },
         responses: {
           200: {
             description: 'Success',

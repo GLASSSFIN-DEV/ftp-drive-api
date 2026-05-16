@@ -23,7 +23,7 @@ export interface IFtpLibrary {
     removeDir(remotePath: string): Promise<IOkResponse<FTPResponse>>;
     folderExist(remotePath: string): Promise<boolean>;
     send(remotePath: string, name: string, command: string): Promise<FTPResponse>;
-    debug(): Promise<{ workingDir: string; items: FileInfo[] }>;
+    debug(remotePath: string): Promise<{ fromPath: string; items: FileInfo[]; toPath: string; }>;
 }
 
 export class FtpLibrary implements IFtpLibrary {
@@ -297,13 +297,16 @@ export class FtpLibrary implements IFtpLibrary {
 
     /**
      * 
+     * @param remotePath 
      * @returns 
      */
-    async debug(): Promise<{ workingDir: string; items: FileInfo[] }> {
+    async debug(remotePath: string): Promise<{ fromPath: string; items: FileInfo[]; toPath: string; }> {
         await this.connect()
-        const pwd = await this.client.pwd()
-        const lists = await this.client.list()
+        const fromPath = await this.client.pwd()
+        await this.client.ensureDir(remotePath)
+        const items = await this.client.list()
+        const toPath = await this.client.pwd()
 
-        return { workingDir: pwd, items: lists } 
+        return { fromPath, items, toPath } 
     }
 }
