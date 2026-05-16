@@ -8,7 +8,7 @@ import { Context } from "hono";
 import { env } from '@/config';
 import { Folder } from "@/generated/prisma/client";
 import { StatusCodes } from "http-status-codes";
-import createPagination from "@/common/pagination";
+import createPagination, { createOrderBy } from "@/common/pagination";
 import { FolderWhereInput } from "@/generated/prisma/models";
 
 interface IFolderObj {
@@ -52,9 +52,9 @@ export interface IRepositoryFolder {
     changeFolder(c: Context): Promise<IOkResponse>;
     removeFolder(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
-    get(c: Context): Promise<IOkResponse<IFolderObj | null>>;
+    get(c: Context): Promise<Object | null>;
     queryPath(folderId: string): Promise<string>;
-    myFolders(c: Context): Promise<IFolderObj[]>;
+    myFolders(c: Context): Promise<Object[]>;
 }
 
 export class RepositoryFolder implements IRepositoryFolder {
@@ -338,10 +338,10 @@ export class RepositoryFolder implements IRepositoryFolder {
      * 
      * @param c 
      */
-    async get(c: Context): Promise<IOkResponse<IFolderObj | null>> {
+    async get(c: Context): Promise<Object | null> {
         const account = c.get('account')
         const id = c.req.param('id')
-        const item: IFolderObj | null = await prismaProxy.folder.findFirst({
+        const item = await prismaProxy.folder.findFirst({
             where: { id },
             select: {
                 id: true,
@@ -372,13 +372,29 @@ export class RepositoryFolder implements IRepositoryFolder {
                         folderName: true,
                     }
                 },
-                fileSharings: {
+                folderSharings: {
                     select: {
-                        id: true,
-                        account: {
+                        toAccount: {
                             select: {
-                                username: true,
-                                fullname: true,
+                                _count: true,
+                            }
+                        }
+                    }
+                },
+                files: {
+                    select: {
+                        _count: true,
+                        id: true,
+                        fileName: true,
+                        fileType: true,
+                        fileSize: true,
+                        fileSharings: {
+                            select: {
+                                toAccount: {
+                                    select: {
+                                        _count: true,
+                                    }
+                                }
                             }
                         }
                     }
@@ -386,64 +402,97 @@ export class RepositoryFolder implements IRepositoryFolder {
             }
         })
 
-        return {
-            messages: ['Success'],
-            statusCode: StatusCodes.OK,
-            payload: item ? {
-                ...item,
-                action: {
-                    isUpdate: account && account.id === item.accountId,
-                    isDelete: account && account.id === item.accountId,
-                    isSharing: account && account.id === item.accountId,
-                }
-            } : null
-        }
+        return item ? {
+            ...item,
+            action: {
+                isUpdate: account && account.id === item.accountId,
+                isDelete: account && account.id === item.accountId,
+                isSharing: account && account.id === item.accountId,
+            }
+        } : null
     }
 
     /**
      * 
      * @param c 
      */
-    async myFolders(c: Context): Promise<IFolderObj[]> {
+    async myFolders(c: Context): Promise<Object[]> {
         const account = c.get('account')
-        const items: IFolderObj[] = await prismaProxy.folder.findMany({ 
-            where: { accountId: account.id },
+        const parentId = c.req.param('parentId')
+        const query = c.req.query()
+        const { keyword, startDate, endDate } = c.req.query()
+        const where: FolderWhereInput = {
+            parentId, accountId: account.id,
+            createdAt: {
+                gte: startDate ? new Date(startDate) : undefined,
+                lt: endDate ? new Date(endDate) : undefined,
+            },
+            OR: [
+                { folderName: { contains: keyword, mode: 'insensitive' } },
+                {
+                    files: {
+                        some: {
+                            fileName: { contains: keyword, mode: 'insensitive' }
+                        }
+                    }
+                },
+                {
+                    account: {
+                        fullname: { contains: keyword, mode: 'insensitive' }
+                    }
+                }
+            ]
+        }
+
+        const orderBy = createOrderBy(query, { makedAt: 'desc' });
+        const items = await prismaProxy.folder.findMany({
+            where,
+            orderBy,
             select: {
                 id: true,
                 folderName: true,
-                createdAt: true,
-                updatedAt: true,
                 source: true,
-                accountId: true,
+                updatedAt: true,
+                createdAt: true,
                 account: {
                     select: {
                         fullname: true,
-                        username: true
-                    }
+                    },
                 },
                 parentId: true,
                 parent: {
                     select: {
-                        folderName: true
+                        folderName: true,
                     }
                 },
                 folders: {
                     select: {
-                        _count: {
-                            select: {
-                                folders: true
-                            }
-                        },
-                        folderName: true,
+                        _count: true
                     }
                 },
-                fileSharings: {
+                folderSharings: {
                     select: {
-                        id: true,
-                        account: {
+                        toAccount: {
                             select: {
-                                username: true,
-                                fullname: true,
+                                _count: true,
+                            }
+                        }
+                    }
+                },
+                files: {
+                    select: {
+                        _count: true,
+                        id: true,
+                        fileName: true,
+                        fileType: true,
+                        fileSize: true,
+                        fileSharings: {
+                            select: {
+                                toAccount: {
+                                    select: {
+                                        _count: true,
+                                    }
+                                }
                             }
                         }
                     }
