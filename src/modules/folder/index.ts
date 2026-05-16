@@ -1,17 +1,17 @@
 import RequestValidator from '@/middleware/req.validator'
 import { Hono } from 'hono'
 import { RepositoryFolder } from '@/modules/folder/folder.svc'
-import { FileChangeDto, FileNewDto } from '@/dto/file.dto'
 import AuthConsent from '@/middleware/auth.validator'
+import { FolderChangeDto, FolderNewDto } from '@/dto/folder.dto'
 
 const router = new Hono()
 const folderService = new RepositoryFolder()
 
-router.post('/folder', RequestValidator.validate(FileNewDto), AuthConsent.validate(), async (c) => {
+router.post('/folder', RequestValidator.validate(FolderNewDto), AuthConsent.validate(), async (c) => {
     const value = await folderService.newFolder(c)
     return c.json(value)
 })
-router.put('/folder/:id', RequestValidator.validate(FileChangeDto), AuthConsent.validate(), async (c) => {
+router.put('/folder/:id', RequestValidator.validate(FolderChangeDto), AuthConsent.validate(), async (c) => {
     const value = await folderService.changeFolder(c)
     return c.json(value)
 })
