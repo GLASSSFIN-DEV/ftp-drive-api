@@ -1,5 +1,5 @@
 import { HttpException } from "@/common/http-exception";
-import { IFtpLibrary, FtpLibrary } from "@/lib/ftp";
+import { FtpLibrary } from "@/lib/ftp";
 import { IItemPagination, IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";

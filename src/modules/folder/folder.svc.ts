@@ -1,6 +1,6 @@
 import { HttpException } from "@/common/http-exception";
 import { FolderChangeDto, FolderNewDto } from "@/dto/folder.dto";
-import { FtpLibrary, type IFtpLibrary } from "@/lib/ftp";
+import { FtpLibrary } from "@/lib/ftp";
 import { prismaProxy } from "@/lib/prisma";
 import { IItemPagination, IOkResponse } from "@/types/common";
 import { InputJsonObject, JsonValue } from "@prisma/client/runtime/client";
