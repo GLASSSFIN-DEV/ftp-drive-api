@@ -456,7 +456,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             ]
         }
 
-        const orderBy = createOrderBy(query, { makedAt: 'desc' });
+        const orderBy = createOrderBy(query, { createdAt: 'desc' });
         const items = await prismaProxy.folder.findMany({
             where,
             orderBy,

@@ -85,6 +85,9 @@ const logFormat = format.combine(
   format.ms(),
   format.json(),
   format.splat(),
+  format.prettyPrint({
+    colorize: true,
+  })
 );
 
 let logger: Logger;
