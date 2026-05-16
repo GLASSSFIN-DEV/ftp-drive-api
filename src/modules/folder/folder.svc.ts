@@ -237,6 +237,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async removeFolder(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
+        const homePath = account.homePath
         const id = c.req.param('id') as string
         const exist = await prismaProxy.folder.findFirst({ where: { id, accountId: account.id } })
 
@@ -261,10 +262,12 @@ export class RepositoryFolder implements IRepositoryFolder {
             await tx.folder.delete({ where: { id, accountId: account.id } })
         })
 
-        const remotePath = await this.queryPath(id)
         const ftp = new FtpLibrary(source.ftpPort)
-        await ftp.removeDir(remotePath)
+        const currentDir = await this.queryPath(id)
+        const workingDir = `${homePath}/${currentDir}`
 
+        await ftp.removeDir(workingDir)
+        
         return {
             statusCode: StatusCodes.OK,
             messages: ['Remove Success'],
