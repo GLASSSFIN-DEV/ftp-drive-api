@@ -5,7 +5,7 @@ import { IAccount } from '@/types/hono'
 import { StatusCodes } from 'http-status-codes'
 import { verify } from 'hono/jwt'
 import { env } from '@/config'
-import prismaProxy from '@/lib/prisma'
+import { prismaProxy } from '@/lib/prisma'
 import { JWTPayload } from 'hono/utils/jwt/types'
 
 export function homePath(value: string) {

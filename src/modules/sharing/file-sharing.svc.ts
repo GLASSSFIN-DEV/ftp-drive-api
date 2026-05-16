@@ -1,13 +1,13 @@
 import { HttpException } from "@/common/http-exception";
 import { FileSharingNewDto } from "@/dto/file-share.dto";
 import { SharePermission } from "@/generated/prisma/enums";
-import { IFtpLibrary, FtpLibrary } from "@/lib/ftp";
-import prismaProxy from "@/lib/prisma";
+import { FtpLibrary } from "@/lib/ftp";
+import { prismaProxy } from "@/lib/prisma";
 import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { v7 } from 'uuid';
-import { IRepositoryFolder, RepositoryFolder } from "../folder/folder.svc";
+import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
 
 interface IFileSharingObj {
     account: {
@@ -30,18 +30,14 @@ interface IFileSharingObj {
 export interface IRepositoryFileSharing {
     fileSharingNew(c: Context): Promise<IOkResponse>;
     fileSharingDrop(c: Context): Promise<IOkResponse>;
-    get(c: Context): Promise<IOkResponse<IFileSharingObj | null>>;
+    get(c: Context): Promise<IFileSharingObj | null>;
 }
 
 export class RepositoryFileSharing implements IRepositoryFileSharing {
-    private readonly ftp: IFtpLibrary = new FtpLibrary()
-    private readonly ftpPort: number = 990
     private readonly folderRepo: IRepositoryFolder = new RepositoryFolder()
 
-    constructor(ftpPort: number = 990) {
-        this.folderRepo = new RepositoryFolder(ftpPort)
-        this.ftp = new FtpLibrary(ftpPort)
-        this.ftpPort = ftpPort;
+    constructor() {
+        this.folderRepo = new RepositoryFolder()
     }
 
     /**
@@ -76,9 +72,18 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
                 messages: ['User not found!']
             })
 
+        const source = findFile.source as unknown as ISource
+        if (!source?.ftpPort) throw new HttpException({
+            errCode: 'SOURCE_NOT_FOUND',
+            statusCode: StatusCodes.NOT_FOUND,
+            messages: ['Your folder source not defined!']
+        })
+
+        const ftp = new FtpLibrary(source.ftpPort)
         const link = `code=${v7()}`
         const remotePath = await this.folderRepo.queryPath(findFile.folderId)
-        await this.ftp.getInfo(remotePath, findFile.fileName)
+
+        await ftp.getInfo(remotePath, findFile.fileName)
         await prismaProxy.$transaction(async (tx) => {
             await tx.fileSharing.create({
                 data: {
@@ -130,7 +135,7 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
      * 
      * @param c 
      */
-    async get(c: Context): Promise<IOkResponse<IFileSharingObj | null>> {
+    async get(c: Context): Promise<IFileSharingObj | null> {
         const account = c.get('account')
         const id = c.req.param('id')
         const item: IFileSharingObj | null = await prismaProxy.fileSharing.findFirst({
@@ -160,11 +165,7 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
             }
         })
 
-        return {
-            statusCode: StatusCodes.OK,
-            messages: [],
-            payload: item
-        }
+        return item
     }
 
 }

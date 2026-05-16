@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
 export class FolderNewDto {
     @IsString()
@@ -7,6 +7,9 @@ export class FolderNewDto {
     @IsString()
     @IsOptional()
     parentId?: string;
+
+    @IsNumber()
+    siteId!: number;
 }
 
 export class FolderChangeDto {
@@ -16,4 +19,7 @@ export class FolderChangeDto {
     @IsString()
     @IsOptional()
     parentId?: string;
+
+    @IsNumber()
+    siteId!: number;
 }

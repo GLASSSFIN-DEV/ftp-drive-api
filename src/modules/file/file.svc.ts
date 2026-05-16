@@ -2,9 +2,9 @@ import { HttpException } from "@/common/http-exception";
 import { IFtpLibrary, FtpLibrary } from "@/lib/ftp";
 import { IItemPagination, IOkResponse } from "@/types/common";
 import { Context } from "hono";
-import { IRepositoryFolder, RepositoryFolder } from "../folder/folder.svc";
+import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
 import { FileChangeDto, FileNewDto } from "@/dto/file.dto";
-import prismaProxy from "@/lib/prisma";
+import { prismaProxy } from "@/lib/prisma";
 import { StatusCodes } from "http-status-codes";
 import { env } from '@/config';
 import { InputJsonObject, JsonValue } from "@prisma/client/runtime/client";
@@ -43,25 +43,20 @@ interface IFileObj {
     }[];
 }
 
-interface IFileSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; fileHash?: FTPResponse }
 export interface IRepositoryFile {
     newFile(c: Context): Promise<IOkResponse>;
     changeFile(c: Context): Promise<IOkResponse>;
     removeFile(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
-    get(c: Context): Promise<IOkResponse<IFileObj | null>>;
-    myFiles(c: Context): Promise<IFileObj[]>;
+    get(c: Context): Promise<Object | null>;
+    myFiles(c: Context): Promise<Object[]>;
 }
 
 export class RepositoryFile implements IRepositoryFile {
-    private readonly ftp: IFtpLibrary = new FtpLibrary()
-    private readonly ftpPort: number = 990
     private readonly folderRepo: IRepositoryFolder = new RepositoryFolder()
 
-    constructor(ftpPort: number = 990) {
-        this.folderRepo = new RepositoryFolder(ftpPort)
-        this.ftp = new FtpLibrary(ftpPort)
-        this.ftpPort = ftpPort;
+    constructor() {
+        this.folderRepo = new RepositoryFolder()
     }
 
     /**
@@ -79,14 +74,15 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Selected folder not found!']
         })
 
+        const ftp = new FtpLibrary(obj.siteId)
         const remotePath = await this.folderRepo.queryPath(folder.id)
-        await this.ftp.folderExist(remotePath)
-        const fileHash = await this.ftp.send(remotePath, obj.fileName, 'XMD5')
+        await ftp.folderExist(remotePath)
+        const fileHash = await ftp.send(remotePath, obj.fileName, 'XMD5')
 
         await prismaProxy.$transaction(async (tx) => {
-            const source: IFileSource = {
+            const source: ISource = {
                 ftpHost: env.FTP_HOST,
-                ftpPort: this.ftpPort,
+                ftpPort: obj.siteId,
                 remotePath,
                 fileHash: fileHash as FTPResponse
             }
@@ -105,7 +101,7 @@ export class RepositoryFile implements IRepositoryFile {
             })
         })
 
-        const file = await this.ftp.getInfo(remotePath, obj.fileName)
+        const file = await ftp.getInfo(remotePath, obj.fileName)
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['File uploaded'],
@@ -143,14 +139,15 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['File name already exist!']
         })
 
+        const ftp = new FtpLibrary(obj.siteId)
         const remotePath = await this.folderRepo.queryPath(folder.id)
-        await this.ftp.folderExist(remotePath)
-        const fileHash = await this.ftp.send(remotePath, obj.fileName, 'XMD5')
+        await ftp.folderExist(remotePath)
+        const fileHash = await ftp.send(remotePath, obj.fileName, 'XMD5')
 
         await prismaProxy.$transaction(async (tx) => {
-            const source: IFileSource = {
+            const source: ISource = {
                 ftpHost: env.FTP_HOST,
-                ftpPort: this.ftpPort,
+                ftpPort: obj.siteId,
                 remotePath,
                 fileHash: fileHash as FTPResponse
             }
@@ -167,10 +164,10 @@ export class RepositoryFile implements IRepositoryFile {
             })
         })
 
-        const file = await this.ftp.getInfo(remotePath, obj.fileName)
+        const file = await ftp.getInfo(remotePath, obj.fileName)
         const oldPath = await this.folderRepo.queryPath(exist.folderId)
         const newPath = await this.folderRepo.queryPath(obj.folderId)
-        await this.ftp.rename(
+        await ftp.rename(
             (oldPath + '/' + obj.fileName).replace(/\/+/g, '/'),
             (newPath + '/' + obj.fileName).replace(/\/+/g, '/')
         )
@@ -197,13 +194,21 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Selected file not found!']
         })
 
+        const source = exist.source as unknown as ISource
+        if (!source?.ftpPort) throw new HttpException({
+            errCode: 'SOURCE_NOT_FOUND',
+            statusCode: StatusCodes.NOT_FOUND,
+            messages: ['Your folder source not defined!']
+        })
+
         await prismaProxy.$transaction(async (tx) => {
             await tx.fileSharing.deleteMany({ where: { fileId: id, accountId: account.id } })
             await tx.file.delete({ where: { id, accountId: account.id } })
         })
 
+        const ftp = new FtpLibrary(source.ftpPort)
         const remotePath = await this.folderRepo.queryPath(exist.folderId)
-        await this.ftp.removeFile(remotePath, exist.fileName)
+        await ftp.removeFile(remotePath, exist.fileName)
 
         return {
             statusCode: StatusCodes.OK,
@@ -295,7 +300,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async get(c: Context): Promise<IOkResponse<IFileObj | null>> {
+    async get(c: Context): Promise<IFileObj | null> {
         const account = c.get('account')
         const id = c.req.param('id')
         const item: IFileObj | null = await prismaProxy.file.findFirst({
@@ -335,27 +340,23 @@ export class RepositoryFile implements IRepositoryFile {
             }
         })
 
-        return {
-            messages: ['Success'],
-            statusCode: StatusCodes.OK,
-            payload: item ? {
-                ...item,
-                action: {
-                    isUpdate: account && account.id === item.accountId,
-                    isDelete: account && account.id === item.accountId,
-                    isSharing: account && account.id === item.accountId,
-                }
-            } : null
-        }
+        return item ? {
+            ...item,
+            action: {
+                isUpdate: account && account.id === item.accountId,
+                isDelete: account && account.id === item.accountId,
+                isSharing: account && account.id === item.accountId,
+            }
+        } : null
     }
 
     /**
      * 
      * @param c 
      */
-    async myFiles(c: Context): Promise<IFileObj[]> {
+    async myFiles(c: Context): Promise<Object[]> {
         const account = c.get('account')
-        const items: IFileObj[] = await prismaProxy.file.findMany({
+        const items = await prismaProxy.file.findMany({
             where: { accountId: account.id },
             select: {
                 id: true,
@@ -381,7 +382,7 @@ export class RepositoryFile implements IRepositoryFile {
                 fileSharings: {
                     select: {
                         id: true,
-                        account: {
+                        toAccount: {
                             select: {
                                 username: true,
                                 fullname: true,

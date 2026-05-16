@@ -1,6 +1,6 @@
 import { HttpException } from "@/common/http-exception";
 import { GoogleOAuth, IGoogleOAuth } from "@/lib/google-oauth";
-import prismaProxy from "@/lib/prisma";
+import { prismaProxy } from "@/lib/prisma";
 import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { sign } from 'hono/jwt';

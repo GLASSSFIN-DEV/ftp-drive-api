@@ -2,12 +2,12 @@ import { HttpException } from "@/common/http-exception";
 import { FolderSharingNewDto } from "@/dto/folder-share.dto";
 import { SharePermission } from "@/generated/prisma/enums";
 import { IFtpLibrary, FtpLibrary } from "@/lib/ftp";
-import prismaProxy from "@/lib/prisma";
+import { prismaProxy } from "@/lib/prisma";
 import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { v7 } from 'uuid';
-import { IRepositoryFolder, RepositoryFolder } from "../folder/folder.svc";
+import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
 
 interface IFolderSharingObj {
     account: {
@@ -33,14 +33,10 @@ export interface IRepositoryFolderSharing {
 }
 
 export class RepositoryFolderSharing implements IRepositoryFolderSharing {
-    private readonly ftp: IFtpLibrary = new FtpLibrary()
-    private readonly ftpPort: number = 990
     private readonly folderRepo: IRepositoryFolder = new RepositoryFolder()
 
-    constructor(ftpPort: number = 990) {
-        this.folderRepo = new RepositoryFolder(ftpPort)
-        this.ftp = new FtpLibrary(ftpPort)
-        this.ftpPort = ftpPort;
+    constructor() {
+        this.folderRepo = new RepositoryFolder()
     }
 
     /**
@@ -75,9 +71,18 @@ export class RepositoryFolderSharing implements IRepositoryFolderSharing {
                 messages: ['User not found!']
             })
 
+        const source = findFolder.source as unknown as ISource
+        if (!source?.ftpPort) throw new HttpException({
+            errCode: 'SOURCE_NOT_FOUND',
+            statusCode: StatusCodes.NOT_FOUND,
+            messages: ['Your folder source not defined!']
+        })
+
+        const ftp = new FtpLibrary(source.ftpPort)
         const link = `code=${v7()}`
         const remotePath = await this.folderRepo.queryPath(findFolder.id)
-        await this.ftp.folderExist(remotePath)
+
+        await ftp.folderExist(remotePath)
         await prismaProxy.$transaction(async (tx) => {
             await tx.folderSharing.create({
                 data: {

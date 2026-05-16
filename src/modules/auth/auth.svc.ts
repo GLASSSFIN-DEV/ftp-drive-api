@@ -1,6 +1,6 @@
 import { HttpException } from "@/common/http-exception";
 import { LoginDto } from "@/dto/login.dto";
-import prismaProxy from "@/lib/prisma";
+import { prismaProxy } from "@/lib/prisma";
 import { sign } from 'hono/jwt';
 import { env } from '@/config';
 import { JWTPayload } from "hono/utils/jwt/types";
@@ -78,7 +78,7 @@ export class Auth implements IRepositoryAuth {
             where: { accountId: account.id, recordStatus: 'ACTIVE' }
         })
 
-        return { statusCode: StatusCodes.OK, messages: ['Logged out!'] } 
+        return { statusCode: StatusCodes.OK, messages: ['Logged out!'] }
     }
 
     /**
@@ -123,7 +123,7 @@ export class Auth implements IRepositoryAuth {
                 fullname: true,
             }
         })
-        
+
         return items
     }
 }

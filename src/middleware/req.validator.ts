@@ -9,8 +9,6 @@ import {
 
 import logger from '@/lib/logger'
 import { HttpException } from '@/common/http-exception'
-import prismaProxy from '@/lib/prisma'
-import { InputJsonObject } from '@prisma/client/runtime/client'
 
 export default class RequestValidator {
   static validate = <T>(
@@ -30,17 +28,10 @@ export default class RequestValidator {
           } as ValidatorOptions
         )
 
+        logger.http(`[body]`, { body, convertedObject, errors })
         if (!errors.length) {
           c.set('validatedBody', convertedObject)
-          await prismaProxy.traceSpan.create({
-            data: {
-              traceId: c.get('traceId'),
-              json: { body, convertedObject } as unknown as InputJsonObject,
-              context: `[body]`,
-              durationMs: 0,
-            }
-          })
-          
+
           await next()
           return
         }

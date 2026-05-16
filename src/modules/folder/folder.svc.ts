@@ -1,7 +1,7 @@
 import { HttpException } from "@/common/http-exception";
 import { FolderChangeDto, FolderNewDto } from "@/dto/folder.dto";
 import { FtpLibrary, type IFtpLibrary } from "@/lib/ftp";
-import prismaProxy from "@/lib/prisma";
+import { prismaProxy } from "@/lib/prisma";
 import { IItemPagination, IOkResponse } from "@/types/common";
 import { InputJsonObject, JsonValue } from "@prisma/client/runtime/client";
 import { Context } from "hono";
@@ -10,6 +10,7 @@ import { Folder } from "@/generated/prisma/client";
 import { StatusCodes } from "http-status-codes";
 import createPagination, { createOrderBy } from "@/common/pagination";
 import { FolderWhereInput } from "@/generated/prisma/models";
+import { FTPResponse } from "basic-ftp";
 
 interface IFolderObj {
     action?: {
@@ -46,7 +47,14 @@ interface IFolderObj {
     }[];
 }
 
-interface IFolderSource { ftpHost: string; ftpPort: number; remotePath?: string; oldPath?: string; }
+export interface ISource { 
+    [key: string]: string | number | undefined | FTPResponse
+    ftpHost: string; 
+    ftpPort: number; 
+    remotePath?: string; 
+    oldPath?: string; 
+}
+
 export interface IRepositoryFolder {
     newFolder(c: Context): Promise<IOkResponse>;
     changeFolder(c: Context): Promise<IOkResponse>;
@@ -58,13 +66,7 @@ export interface IRepositoryFolder {
 }
 
 export class RepositoryFolder implements IRepositoryFolder {
-    private readonly ftp: IFtpLibrary = new FtpLibrary()
-    private readonly ftpPort: number = 990
-
-    constructor(ftpPort: number = 990) {
-        this.ftp = new FtpLibrary(ftpPort)
-        this.ftpPort = ftpPort;
-    }
+    constructor() { }
 
     /**
      * 
@@ -114,14 +116,15 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
+        const ftp = new FtpLibrary(obj.siteId)
         const remotePath = await this.queryPath(parent.id)
-        await this.ftp.folderExist(remotePath)
+        await ftp.folderExist(remotePath)
 
         const finalPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
         await prismaProxy.$transaction(async (tx) => {
-            const source: IFolderSource = {
+            const source: ISource = {
                 ftpHost: env.FTP_HOST,
-                ftpPort: this.ftpPort,
+                ftpPort: obj.siteId,
                 remotePath: finalPath
             }
 
@@ -136,7 +139,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             })
         })
 
-        await this.ftp.folderExist(finalPath)
+        await ftp.folderExist(finalPath)
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['Create Success'],
@@ -175,15 +178,16 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
+        const ftp = new FtpLibrary(obj.siteId)
         const remotePath = await this.queryPath(parent.id)
         const oldPath = await this.queryPath(exist.id)
         const newPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
-        await this.ftp.folderExist(oldPath)
+        await ftp.folderExist(oldPath)
 
         await prismaProxy.$transaction(async (tx) => {
-            const source: IFolderSource = {
+            const source: ISource = {
                 ftpHost: env.FTP_HOST,
-                ftpPort: this.ftpPort,
+                ftpPort: obj.siteId,
                 remotePath: newPath,
                 oldPath,
             }
@@ -200,8 +204,8 @@ export class RepositoryFolder implements IRepositoryFolder {
             })
         })
 
-        if (exist.folderName !== obj.folderName) await this.ftp.rename(oldPath, newPath)
-        else await this.ftp.folderExist(newPath)
+        if (exist.folderName !== obj.folderName) await ftp.rename(oldPath, newPath)
+        else await ftp.folderExist(newPath)
 
         return {
             statusCode: StatusCodes.CREATED,
@@ -225,6 +229,13 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Your folder doesn`t exists!']
         })
 
+        const source = exist.source as unknown as ISource
+        if (!source?.ftpPort) throw new HttpException({
+            errCode: 'SOURCE_NOT_FOUND',
+            statusCode: StatusCodes.NOT_FOUND,
+            messages: ['Your folder source not defined!']
+        })
+
         const fileIds = await prismaProxy.file.findMany({ where: { folderId: id } })
         await prismaProxy.$transaction(async (tx) => {
             await tx.fileSharing.deleteMany({ where: { fileId: { in: fileIds.map(e => e.id) }, accountId: account.id } })
@@ -234,7 +245,8 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const remotePath = await this.queryPath(id)
-        await this.ftp.removeDir(remotePath)
+        const ftp = new FtpLibrary(source.ftpPort)
+        await ftp.removeDir(remotePath)
 
         return {
             statusCode: StatusCodes.OK,

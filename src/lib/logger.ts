@@ -1,10 +1,10 @@
 import { createLogger, format, transports, type Logger } from 'winston';
-import { env, Environments, Logs } from '@/config';
-import prismaProxy from './prisma';
+import { env, Logs } from '@/config';
 import { v7 } from 'uuid';
 import Transport from 'winston-transport';
 import { getContext } from 'hono/context-storage';
 import fastRedact from 'fast-redact';
+import { prisma } from './prisma';
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined;
@@ -61,7 +61,7 @@ class PrismaTransport extends Transport {
         ? JSON.parse(redact(info.metadata))
         : null;
 
-      await prismaProxy.traceSpan.create({
+      await prisma.traceSpan.create({
         data: {
           id: v7(),
           traceId: context.get('traceId'),

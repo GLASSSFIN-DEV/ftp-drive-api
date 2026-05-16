@@ -142,4 +142,4 @@ const prismaProxy = new Proxy(prisma, {
     }
 })
 
-export default prismaProxy;
+export { prisma, prismaProxy }

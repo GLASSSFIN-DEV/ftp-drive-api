@@ -1,4 +1,4 @@
-import prismaProxy from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { getContext } from "hono/context-storage";
 import { MiddlewareHandler } from "hono/types";
 
@@ -13,16 +13,16 @@ export function useTelemetry(): MiddlewareHandler {
       try {
         const context = getContext()
         const data = {
-            id: context.get('traceId'),
-            method: c.req.method,
-            url: c.req.url,
-            status: c.res.status,
-            responseTimeMs: Date.now() - startTime,
-            createdAt: new Date(),
-            accountId: context.get('account')?.id
+          id: context.get('traceId'),
+          method: c.req.method,
+          url: c.req.url,
+          status: c.res.status,
+          responseTimeMs: Date.now() - startTime,
+          createdAt: new Date(),
+          accountId: context.get('account')?.id
         };
 
-        await prismaProxy.trace.create({ data })
+        await prisma.trace.create({ data })
       } catch (error) {
         // never throw from logging
         console.error(`[ERR] Get error when using telemetry`, error)

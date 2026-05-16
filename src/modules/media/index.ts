@@ -7,7 +7,7 @@ import RequestValidator from '@/middleware/req.validator'
 import { MediaDropDto, MediaStreamDto } from '@/dto/media.dto'
 import { lookup } from 'mime-types'
 import AuthConsent from '@/middleware/auth.validator'
-import prismaProxy from '@/lib/prisma'
+import { prismaProxy } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import { IOkResponse } from '@/types/common'
 
@@ -136,7 +136,7 @@ router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
 router.post('/media/drop', RequestValidator.validate(MediaDropDto), AuthConsent.validate(), async (c) => {
     const account = c.get('account')
     const homePath = account.homePath
-    
+
     const body = c.get('validatedBody') as MediaDropDto
     const ftpLibrary = new FtpLibrary()
     const res = await ftpLibrary.removeFile(body.remotePath, body.fileName)
