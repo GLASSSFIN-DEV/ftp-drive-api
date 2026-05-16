@@ -432,9 +432,8 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async myFolders(c: Context): Promise<Object[]> {
         const account = c.get('account')
-        const parentId = c.req.param('parentId')
         const query = c.req.query()
-        const { keyword, startDate, endDate } = c.req.query()
+        const { keyword, startDate, endDate, parentId } = c.req.query()
         const where: FolderWhereInput = {
             parentId, accountId: account.id,
             createdAt: {

@@ -548,6 +548,15 @@ export const definition = {
             BearerAuth: [],
           },
         ],
+        parameters: [
+          {
+            name: "parentId",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+            description: "Folder parent",
+          },
+        ],
         responses: {
           200: {
             description: 'Success',
