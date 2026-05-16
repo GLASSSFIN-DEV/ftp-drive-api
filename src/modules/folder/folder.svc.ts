@@ -510,7 +510,6 @@ export class RepositoryFolder implements IRepositoryFolder {
                 },
                 files: {
                     select: {
-                        _count: true,
                         id: true,
                         fileName: true,
                         fileType: true,
