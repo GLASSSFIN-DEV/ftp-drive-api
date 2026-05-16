@@ -20,7 +20,7 @@ export interface IFtpLibrary {
     getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo>>;
     rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse>>;
     removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse>>;
-    removeDir(remotePath: string): Promise<IOkResponse<FTPResponse>>;
+    removeDir(remotePath: string): Promise<IOkResponse>;
     folderExist(remotePath: string): Promise<boolean>;
     send(remotePath: string, name: string, command: string): Promise<FTPResponse>;
     debug(remotePath: string): Promise<{ fromPath: string; items: FileInfo[]; toPath: string; }>;
@@ -116,12 +116,12 @@ export class FtpLibrary implements IFtpLibrary {
     }> {
         await this.connect()
         await this.client.pwd()
-        await this.client.ensureDir(remotePath)
         const client = this.client;
 
         this.client.trackProgress(info => {
             logger.http('[ftp]', { ...info })
         })
+        
         const lists = await this.client.list(remotePath)
         const files = lists.filter(e => !e.isDirectory)
         const file = files.find(e => e.name === fileName)
@@ -172,7 +172,6 @@ export class FtpLibrary implements IFtpLibrary {
     async getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo>> {
         await this.connect()
         await this.client.pwd()
-        await this.client.ensureDir(remotePath)
 
         const lists = await this.client.list(remotePath)
         const file = lists.find(e => e.name === name)
@@ -200,7 +199,6 @@ export class FtpLibrary implements IFtpLibrary {
     async rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse>> {
         await this.connect()
         await this.client.pwd()
-        await this.client.ensureDir(oldPath)
         const res = await this.client.rename(oldPath, newPath)
 
         this.client.close()
@@ -219,19 +217,10 @@ export class FtpLibrary implements IFtpLibrary {
     async removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse>> {
         await this.connect()
         await this.client.pwd()
-        await this.client.ensureDir(remotePath)
 
-        const lists = await this.client.list(remotePath)
-        const file = lists.find(e => e.name === fileName)
+        const fullPath = `${remotePath}/${fileName}`
+        const res = await this.client.remove(fullPath)
 
-        if (!file)
-            throw new HttpException({
-                errCode: 'FTP_FILE_NOT_FOUND',
-                statusCode: 404,
-                messages: ['File not found in listing directory']
-            })
-
-        const res = await this.client.remove(fileName)
         this.client.close()
 
         return {
@@ -245,18 +234,16 @@ export class FtpLibrary implements IFtpLibrary {
      * 
      * @param remotePath 
      */
-    async removeDir(remotePath: string): Promise<IOkResponse<FTPResponse>> {
+    async removeDir(remotePath: string): Promise<IOkResponse> {
         await this.connect()
         await this.client.pwd()
-        await this.client.ensureDir(remotePath)
 
-        const res = await this.client.remove(remotePath)
+        await this.client.removeDir(remotePath)
         this.client.close()
 
         return {
             statusCode: 200,
             messages: ['Success remove folder'],
-            payload: res
         } satisfies IOkResponse
     }
 
@@ -307,6 +294,6 @@ export class FtpLibrary implements IFtpLibrary {
         const items = await this.client.list()
         const toPath = await this.client.pwd()
 
-        return { fromPath, items, toPath } 
+        return { fromPath, items, toPath }
     }
 }

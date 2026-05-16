@@ -184,17 +184,31 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const remotePath = obj.parentId ? await this.queryPath(obj.parentId) : homePath
-        const oldPath = await this.queryPath(exist.id)
-        const newPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
-        await ftp.folderExist(oldPath)
+        const currentDir = await this.queryPath(exist.id)
+        const lastWorkDir = `${homePath}/${currentDir}`
+        await ftp.folderExist(lastWorkDir)
 
+        // if new parent <> last parent
+        let parentPath = ''
+        if (obj.parentId && obj.parentId !== exist.parentId) {
+            parentPath = await this.queryPath(obj.parentId)
+            await ftp.folderExist(`${homePath}/${parentPath}`)
+        }
+
+        // if new folderName <> last folderName
+        let newWorkDir = ''
+        if (obj.folderName !== exist.folderName) {
+            newWorkDir = `${homePath}/${parentPath}/${obj.folderName}`
+            await ftp.folderExist(newWorkDir.replace(/\/+/g, '/'))
+        }
+
+        await ftp.folderExist(newWorkDir)
         await prismaProxy.$transaction(async (tx) => {
             const source: ISource = {
                 ftpHost: env.FTP_HOST,
                 ftpPort: obj.siteId,
-                remotePath: newPath,
-                oldPath,
+                remotePath: newWorkDir,
+                lastWorkDir,
             }
 
             await tx.folder.update({
@@ -209,13 +223,11 @@ export class RepositoryFolder implements IRepositoryFolder {
             })
         })
 
-        if (exist.folderName !== obj.folderName) await ftp.rename(oldPath, newPath)
-        else await ftp.folderExist(newPath)
-
+        await ftp.rename(lastWorkDir, newWorkDir)
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['Change Success'],
-            payload: { oldPath, newPath }
+            payload: { lastWorkDir, newWorkDir }
         } satisfies IOkResponse
     }
 
