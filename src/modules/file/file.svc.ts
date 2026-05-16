@@ -357,8 +357,29 @@ export class RepositoryFile implements IRepositoryFile {
     async myFiles(c: Context): Promise<Object[]> {
         const account = c.get('account')
         const folderId = c.req.param('folderId')
+        const { keyword, startDate, endDate } = c.req.query()
+        const where: FileWhereInput = {
+            folderId, accountId: account.id,
+            createdAt: {
+                gte: startDate ? new Date(startDate) : undefined,
+                lt: endDate ? new Date(endDate) : undefined,
+            },
+            OR: [
+                { fileName: { contains: keyword, mode: 'insensitive' } },
+                {
+                    fileSharings: {
+                        some: {
+                            toAccount: {
+                                fullname: { contains: keyword, mode: 'insensitive' }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+
         const items = await prismaProxy.file.findMany({
-            where: { accountId: account.id, folderId },
+            where,
             select: {
                 id: true,
                 fileName: true,
