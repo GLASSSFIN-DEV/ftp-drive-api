@@ -98,7 +98,7 @@ try {
     format: logFormat,
     transports: [
       new PrismaTransport(), 
-      env.LOG === Logs.VERBOSE ? new transports.Console() : null
+      // env.LOG === Logs.VERBOSE ? new transports.Console() : null 
     ].filter(notEmpty),
   });
 } catch (err) {
