@@ -100,10 +100,11 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async newFolder(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
+        const homePath = account.homePath
         const obj: FolderNewDto = c.get('validatedBody') as FolderNewDto
         const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId, accountId: account.id } })
 
-        if (!parent) throw new HttpException({
+        if (obj.parentId && !parent) throw new HttpException({
             errCode: 'PARENT_NOT_FOUND',
             statusCode: StatusCodes.NOT_FOUND,
             messages: ['Your parent folder doesn`t exists!']
@@ -117,7 +118,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const remotePath = await this.queryPath(parent.id)
+        const remotePath = obj.parentId ? await this.queryPath(obj.parentId) : homePath
         await ftp.folderExist(remotePath)
 
         const finalPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
@@ -154,6 +155,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async changeFolder(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
+        const homePath = account.homePath
         const obj: FolderChangeDto = c.get('validatedBody') as FolderChangeDto
         const id = c.req.param('id') as string
         const exist = await prismaProxy.folder.findFirst({ where: { id, accountId: account.id } })
@@ -165,7 +167,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const parent = await prismaProxy.folder.findFirst({ where: { id: obj.parentId, accountId: account.id } })
-        if (!parent) throw new HttpException({
+        if (obj.parentId && !parent) throw new HttpException({
             errCode: 'PARENT_NOT_FOUND',
             statusCode: StatusCodes.NOT_FOUND,
             messages: ['Your parent folder doesn`t exists!']
@@ -179,7 +181,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const remotePath = await this.queryPath(parent.id)
+        const remotePath = obj.parentId ? await this.queryPath(obj.parentId) : homePath
         const oldPath = await this.queryPath(exist.id)
         const newPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
         await ftp.folderExist(oldPath)
