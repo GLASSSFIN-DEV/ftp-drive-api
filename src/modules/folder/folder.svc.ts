@@ -185,30 +185,28 @@ export class RepositoryFolder implements IRepositoryFolder {
 
         const ftp = new FtpLibrary(obj.siteId)
         const currentDir = await this.queryPath(exist.id)
-        const lastWorkDir = `${homePath}/${currentDir}`
-        await ftp.folderExist(lastWorkDir)
+        const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
+        let newWorkDir = lastWorkDir
 
         // if new parent <> last parent
-        let parentPath = ''
         if (obj.parentId && obj.parentId !== exist.parentId) {
-            parentPath = await this.queryPath(obj.parentId)
-            await ftp.folderExist(`${homePath}/${parentPath}`)
+            const parentPath = await this.queryPath(obj.parentId)
+            newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
+
+            await ftp.folderExist(newWorkDir)
         }
 
         // if new folderName <> last folderName
-        let newWorkDir = ''
         if (obj.folderName !== exist.folderName) {
-            newWorkDir = `${homePath}/${parentPath}/${obj.folderName}`
-            await ftp.folderExist(newWorkDir.replace(/\/+/g, '/'))
+            newWorkDir = `${newWorkDir}/${obj.folderName}`.replace(/\/+/g, '/')
+            await ftp.folderExist(newWorkDir)
         }
 
-        await ftp.folderExist(newWorkDir)
         await prismaProxy.$transaction(async (tx) => {
             const source: ISource = {
                 ftpHost: env.FTP_HOST,
                 ftpPort: obj.siteId,
-                remotePath: newWorkDir,
-                lastWorkDir,
+                remotePath: lastWorkDir, newWorkDir
             }
 
             await tx.folder.update({
@@ -266,7 +264,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         const currentDir = await this.queryPath(id)
         const workingDir = `${homePath}/${currentDir}`
 
-        await ftp.removeDir(workingDir)
+        await ftp.removeDir(workingDir.replace(/\/+/g, '/'))
         
         return {
             statusCode: StatusCodes.OK,

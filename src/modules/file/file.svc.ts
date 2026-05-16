@@ -65,6 +65,7 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async newFile(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
+        const homePath = account.homePath
         const obj: FileNewDto = c.get('validatedBody') as FileNewDto
         const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId, accountId: account.id } })
 
@@ -76,14 +77,15 @@ export class RepositoryFile implements IRepositoryFile {
 
         const ftp = new FtpLibrary(obj.siteId)
         const remotePath = await this.folderRepo.queryPath(folder.id)
-        await ftp.folderExist(remotePath)
-        const fileHash = await ftp.send(remotePath, obj.fileName, 'XMD5')
+        const workingDir = `${homePath}/${remotePath}`.replace(/\/+/g, '/')
+        await ftp.folderExist(workingDir)
+        const fileHash = await ftp.send(workingDir, obj.fileName, 'XMD5')
 
         await prismaProxy.$transaction(async (tx) => {
             const source: ISource = {
                 ftpHost: env.FTP_HOST,
                 ftpPort: obj.siteId,
-                remotePath,
+                remotePath: workingDir,
                 fileHash: fileHash as FTPResponse
             }
 
@@ -101,7 +103,7 @@ export class RepositoryFile implements IRepositoryFile {
             })
         })
 
-        const file = await ftp.getInfo(remotePath, obj.fileName)
+        const file = await ftp.getInfo(workingDir, obj.fileName)
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['File uploaded'],
@@ -115,6 +117,7 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async changeFile(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
+        const homePath = account.homePath
         const id = c.req.param('id')
         const obj: FileChangeDto = c.get('validatedBody') as FileChangeDto
         const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId, accountId: account.id } })
@@ -140,15 +143,24 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const remotePath = await this.folderRepo.queryPath(folder.id)
-        await ftp.folderExist(remotePath)
-        const fileHash = await ftp.send(remotePath, obj.fileName, 'XMD5')
+        const currentDir = await this.folderRepo.queryPath(folder.id)
+        const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
+        let newWorkDir = lastWorkDir
 
+        // if new parent <> last parent
+        if (obj.folderId && obj.folderId !== exist.folderId) {
+            const parentPath = await this.folderRepo.queryPath(obj.folderId)
+            newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
+
+            await ftp.folderExist(newWorkDir)
+        }
+
+        const fileHash = await ftp.send(newWorkDir, obj.fileName, 'XMD5')
         await prismaProxy.$transaction(async (tx) => {
             const source: ISource = {
                 ftpHost: env.FTP_HOST,
                 ftpPort: obj.siteId,
-                remotePath,
+                remotePath: lastWorkDir, newWorkDir,
                 fileHash: fileHash as FTPResponse
             }
 
@@ -164,18 +176,16 @@ export class RepositoryFile implements IRepositoryFile {
             })
         })
 
-        const file = await ftp.getInfo(remotePath, obj.fileName)
-        const oldPath = await this.folderRepo.queryPath(exist.folderId)
-        const newPath = await this.folderRepo.queryPath(obj.folderId)
+        const file = await ftp.getInfo(newWorkDir, obj.fileName)
         await ftp.rename(
-            (oldPath + '/' + obj.fileName).replace(/\/+/g, '/'),
-            (newPath + '/' + obj.fileName).replace(/\/+/g, '/')
+            (lastWorkDir + '/' + obj.fileName).replace(/\/+/g, '/'),
+            (newWorkDir + '/' + obj.fileName).replace(/\/+/g, '/')
         )
 
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['File uploaded'],
-            payload: { remotePath, file }
+            payload: { lastWorkDir, newWorkDir, file }
         } satisfies IOkResponse
     }
 
@@ -185,6 +195,7 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async removeFile(c: Context): Promise<IOkResponse> {
         const account = c.get('account')
+        const homePath = account.homePath
         const id = c.req.param('id')
         const exist = await prismaProxy.file.findFirst({ where: { id, accountId: account.id } })
 
@@ -207,8 +218,9 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         const ftp = new FtpLibrary(source.ftpPort)
-        const remotePath = await this.folderRepo.queryPath(exist.folderId)
-        await ftp.removeFile(remotePath, exist.fileName)
+        const currentDir = await this.folderRepo.queryPath(exist.id)
+        const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
+        await ftp.removeFile(lastWorkDir, exist.fileName)
 
         return {
             statusCode: StatusCodes.OK,
