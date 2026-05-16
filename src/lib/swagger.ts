@@ -816,7 +816,7 @@ export const definition = {
         },
       },
     },
-    '/v1/my-files': {
+    '/v1/my-files/{folderId}': {
       get: {
         tags: ['File'],
         summary: 'My Files',
@@ -824,6 +824,15 @@ export const definition = {
           {
             BearerAuth: [],
           },
+        ],
+        parameters: [
+          {
+            name: "folderId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Folder selected",
+          }
         ],
         responses: {
           200: {

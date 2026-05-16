@@ -356,8 +356,9 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async myFiles(c: Context): Promise<Object[]> {
         const account = c.get('account')
+        const folderId = c.req.param('folderId')
         const items = await prismaProxy.file.findMany({
-            where: { accountId: account.id },
+            where: { accountId: account.id, folderId },
             select: {
                 id: true,
                 fileName: true,

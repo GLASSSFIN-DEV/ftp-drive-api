@@ -27,7 +27,7 @@ router.get('/file/:id', AuthConsent.validate(), async (c) => {
     const value = await fileService.get(c)
     return c.json(value)
 })
-router.get('/my-files', AuthConsent.validate(), async (c) => {
+router.get('/my-files/:folderId', AuthConsent.validate(), async (c) => {
     const value = await fileService.myFiles(c)
     return c.json(value)
 })
