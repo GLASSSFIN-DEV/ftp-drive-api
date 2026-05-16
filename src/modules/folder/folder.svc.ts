@@ -117,11 +117,14 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
+        let parentPath = ''
         const ftp = new FtpLibrary(obj.siteId)
-        const remotePath = obj.parentId ? await this.queryPath(obj.parentId) : homePath
-        await ftp.folderExist(remotePath)
+        if (obj.parentId) parentPath = await this.queryPath(obj.parentId)
 
-        const finalPath = (remotePath + '/' + obj.folderName).replace(/\/+/g, '/')
+        const workingDir = `${homePath}/${parentPath}`
+        await ftp.folderExist(workingDir)
+
+        const finalPath = (workingDir + '/' + obj.folderName).replace(/\/+/g, '/')
         await prismaProxy.$transaction(async (tx) => {
             const source: ISource = {
                 ftpHost: env.FTP_HOST,
