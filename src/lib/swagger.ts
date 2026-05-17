@@ -574,6 +574,41 @@ export const definition = {
         },
       },
     },
+    '/v1/folder/{id}/real-path': {
+      get: {
+        tags: ['Folder'],
+        summary: 'Folder Real Path',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Id",
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     
     // File
     '/v1/file/{id}': {
