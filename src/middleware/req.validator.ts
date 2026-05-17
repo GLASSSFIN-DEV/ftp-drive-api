@@ -65,7 +65,7 @@ export default class RequestValidator {
   }
 }
 
-function getAllConstraintKeys(
+export function getAllConstraintKeys(
   jsonObject: ValidationError[]
 ): string[] {
   let keys: string[] = []
