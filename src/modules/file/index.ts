@@ -7,10 +7,6 @@ import AuthConsent from '@/middleware/auth.validator'
 const router = new Hono()
 const fileService = new RepositoryFile()
 
-router.post('/file', RequestValidator.validate(FileNewDto), AuthConsent.validate(), async (c) => {
-    const value = await fileService.newFile(c)
-    return c.json(value)
-})
 router.put('/file/:id', RequestValidator.validate(FileChangeDto), AuthConsent.validate(), async (c) => {
     const value = await fileService.changeFile(c)
     return c.json(value)

@@ -122,7 +122,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         if (obj.parentId) parentPath = await this.queryPath(obj.parentId)
 
         const workingDir = `${homePath}/${parentPath}`
-        await ftp.folderExist(workingDir)
+        await ftp.ensureDir(workingDir)
 
         const finalPath = (workingDir + '/' + obj.folderName).replace(/\/+/g, '/')
         await prismaProxy.$transaction(async (tx) => {
@@ -143,7 +143,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             })
         })
 
-        await ftp.folderExist(finalPath)
+        await ftp.ensureDir(finalPath)
         return {
             statusCode: StatusCodes.CREATED,
             messages: ['Create Success'],
@@ -193,13 +193,13 @@ export class RepositoryFolder implements IRepositoryFolder {
             const parentPath = await this.queryPath(obj.parentId)
             newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
 
-            await ftp.folderExist(newWorkDir)
+            await ftp.ensureDir(newWorkDir)
         }
 
         // if new folderName <> last folderName
         if (obj.folderName !== exist.folderName) {
             newWorkDir = `${newWorkDir}/${obj.folderName}`.replace(/\/+/g, '/')
-            await ftp.folderExist(newWorkDir)
+            await ftp.ensureDir(newWorkDir)
         }
 
         await prismaProxy.$transaction(async (tx) => {

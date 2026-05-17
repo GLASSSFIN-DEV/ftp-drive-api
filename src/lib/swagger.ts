@@ -576,50 +576,6 @@ export const definition = {
     },
     
     // File
-    '/v1/file': {
-      post: {
-        tags: ['File'],
-        summary: 'File New',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref:
-                  '#/components/schemas/FileNewDto',
-              },
-            },
-          },
-        },
-        responses: {
-          200: {
-            description: 'Success',
-            content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/OkResponse",
-                },
-              },
-            },
-          },
-          400: {
-            description: 'Bad Request',
-            content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FailResponse",
-                },
-              },
-            },
-          },
-        },
-      },
-    },
     '/v1/file/{id}': {
       get: {
         tags: ['File'],
@@ -854,80 +810,6 @@ export const definition = {
 
     // Media
     '/v1/media/upload': {
-      post: {
-        tags: ['Media'],
-        summary: 'Upload Single File',
-        description: 'Upload single file to FTP storage',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
-        parameters: [
-          {
-            name: 'site',
-            in: 'query',
-            required: true,
-            schema: {
-              type: 'integer',
-              example: 1,
-            },
-            description: 'FTP Site ID',
-          },
-          {
-            name: 'remotePath',
-            in: 'query',
-            required: true,
-            schema: {
-              type: 'string',
-              example: '/uploads/images',
-            },
-            description: 'Destination remote folder path',
-          },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  file: {
-                    type: 'string',
-                    format: 'binary',
-                    description: 'File upload',
-                  },
-                },
-                required: ['file'],
-              },
-            },
-          },
-        },
-        responses: {
-          200: {
-            description: 'Success',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/OkResponse',
-                },
-              },
-            },
-          },
-          400: {
-            description: 'Bad Request',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/FailResponse',
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    '/v1/media/uploads': {
       post: {
         tags: ['Media'],
         summary: 'Upload Multiple Files',

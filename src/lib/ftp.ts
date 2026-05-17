@@ -1,7 +1,6 @@
 
 import { HttpException } from '@/common/http-exception'
 import { env } from '@/config'
-import { IOkResponse } from '@/types/common'
 import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
 import { PassThrough, Readable } from 'stream'
 import { StatusCodes } from 'http-status-codes'
@@ -9,19 +8,19 @@ import logger from '@/lib/logger'
 
 interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
-    uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<IOkResponse<{
+    uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<{
         file: FileInfo;
         workingDir: string;
-    }>>;
+    }>;
     streamFile(remotePath: string, fileName: string): Promise<{
         stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
         size: number;
     }>;
-    getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo>>;
-    rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse>>;
-    removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse>>;
-    removeDir(remotePath: string): Promise<IOkResponse>;
-    folderExist(remotePath: string): Promise<boolean>;
+    getInfo(remotePath: string, name: string): Promise<FileInfo>;
+    rename(oldPath: string, newPath: string): Promise<FTPResponse>;
+    removeFile(remotePath: string, fileName: string): Promise<FTPResponse>;
+    removeDir(remotePath: string): Promise<void>;
+    ensureDir(remotePath: string): Promise<void>;
     send(remotePath: string, name: string, command: string): Promise<FTPResponse>;
     debug(remotePath: string): Promise<{ fromPath: string; items: FileInfo[]; toPath: string; }>;
 }
@@ -78,10 +77,10 @@ export class FtpLibrary implements IFtpLibrary {
      * @param obj 
      * @returns 
      */
-    async uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string; }): Promise<IOkResponse<{
+    async uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string; }): Promise<{
         file: FileInfo;
         workingDir: string;
-    }>> {
+    }> {
         await this.connect()
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
@@ -98,11 +97,7 @@ export class FtpLibrary implements IFtpLibrary {
         this.client.trackProgress()
         this.client.close()
 
-        return {
-            statusCode: 200,
-            messages: ['File success to upload!'],
-            payload: { workingDir, file: file.payload as FileInfo }
-        } satisfies IOkResponse
+        return { workingDir, file }
     }
 
     /**
@@ -169,7 +164,7 @@ export class FtpLibrary implements IFtpLibrary {
      * @param name 
      * @returns 
      */
-    async getInfo(remotePath: string, name: string): Promise<IOkResponse<FileInfo>> {
+    async getInfo(remotePath: string, name: string): Promise<FileInfo> {
         await this.connect()
         await this.client.pwd()
 
@@ -184,11 +179,7 @@ export class FtpLibrary implements IFtpLibrary {
             })
 
         this.client.close()
-        return {
-            statusCode: 200,
-            messages: ['Object found'],
-            payload: file
-        } satisfies IOkResponse
+        return file
     }
 
     /**
@@ -196,17 +187,13 @@ export class FtpLibrary implements IFtpLibrary {
      * @param oldPath 
      * @param newPath 
      */
-    async rename(oldPath: string, newPath: string): Promise<IOkResponse<FTPResponse>> {
+    async rename(oldPath: string, newPath: string): Promise<FTPResponse> {
         await this.connect()
         await this.client.pwd()
         const res = await this.client.rename(oldPath, newPath)
 
         this.client.close()
-        return {
-            statusCode: 200,
-            messages: ['Object rename success'],
-            payload: res
-        } satisfies IOkResponse
+        return res
     }
 
     /**
@@ -214,7 +201,7 @@ export class FtpLibrary implements IFtpLibrary {
      * @param remotePath 
      * @param fileName 
      */
-    async removeFile(remotePath: string, fileName: string): Promise<IOkResponse<FTPResponse>> {
+    async removeFile(remotePath: string, fileName: string): Promise<FTPResponse> {
         await this.connect()
         await this.client.pwd()
 
@@ -223,40 +210,29 @@ export class FtpLibrary implements IFtpLibrary {
 
         this.client.close()
 
-        return {
-            statusCode: 200,
-            messages: ['Success remove file'],
-            payload: res
-        } satisfies IOkResponse
+        return res
     }
 
     /**
      * 
      * @param remotePath 
      */
-    async removeDir(remotePath: string): Promise<IOkResponse> {
+    async removeDir(remotePath: string): Promise<void> {
         await this.connect()
         await this.client.pwd()
 
         await this.client.removeDir(remotePath)
         this.client.close()
-
-        return {
-            statusCode: 200,
-            messages: ['Success remove folder'],
-        } satisfies IOkResponse
     }
 
     /**
     * 
     * @param remotePath 
     */
-    async folderExist(remotePath: string): Promise<boolean> {
+    async ensureDir(remotePath: string): Promise<void> {
         await this.connect()
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
-
-        return true
     }
 
     /**

@@ -8,7 +8,7 @@ import { prismaProxy } from "@/lib/prisma";
 import { StatusCodes } from "http-status-codes";
 import { env } from '@/config';
 import { InputJsonObject, JsonValue } from "@prisma/client/runtime/client";
-import { FTPResponse } from "basic-ftp";
+import { FileInfo, FTPResponse } from "basic-ftp";
 import createPagination from "@/common/pagination";
 import { FileWhereInput } from "@/generated/prisma/models";
 
@@ -44,7 +44,7 @@ interface IFileObj {
 }
 
 export interface IRepositoryFile {
-    newFile(c: Context): Promise<IOkResponse>;
+    newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string, file: FileInfo }>>;
     changeFile(c: Context): Promise<IOkResponse>;
     removeFile(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
@@ -63,10 +63,9 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async newFile(c: Context): Promise<IOkResponse> {
+    async newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string, file: FileInfo }>> {
         const account = c.get('account')
         const homePath = account.homePath
-        const obj: FileNewDto = c.get('validatedBody') as FileNewDto
         const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId, accountId: account.id } })
 
         if (!folder) throw new HttpException({
@@ -78,7 +77,7 @@ export class RepositoryFile implements IRepositoryFile {
         const ftp = new FtpLibrary(obj.siteId)
         const remotePath = await this.folderRepo.queryPath(folder.id)
         const workingDir = `${homePath}/${remotePath}`.replace(/\/+/g, '/')
-        await ftp.folderExist(workingDir)
+        await ftp.ensureDir(workingDir)
         const fileHash = await ftp.send(workingDir, obj.fileName, 'XMD5')
 
         await prismaProxy.$transaction(async (tx) => {
@@ -152,7 +151,7 @@ export class RepositoryFile implements IRepositoryFile {
             const parentPath = await this.folderRepo.queryPath(obj.folderId)
             newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
 
-            await ftp.folderExist(newWorkDir)
+            await ftp.ensureDir(newWorkDir)
         }
 
         const fileHash = await ftp.send(newWorkDir, obj.fileName, 'XMD5')

@@ -10,9 +10,6 @@ import { env } from "@/config";
 import { v7 } from 'uuid';
 import { ResObj } from "./auth.svc";
 import logger from "@/lib/logger";
-import { FtpLibrary } from "@/lib/ftp";
-import { Prisma } from '@/generated/prisma/client'
-import { homePath } from "@/middleware/auth.validator";
 
 export interface IRepositoryGOAuth {
     handshake(c: Context): Promise<IOkResponse<string>>;
@@ -87,27 +84,6 @@ export class RepositoryGOAuth implements IRepositoryGOAuth {
         await prismaProxy.$transaction(async (tx) => {
             await tx.session.create({ data: { accountId: account.id, jwtHash: accessToken, recordStatus: 'ACTIVE' } })
         })
-
-        // create folder at firsttime
-        const sites = await prismaProxy.option.findFirst({
-            select: { key: true, json: true },
-            where: {
-                key: 'ftp-site',
-                json: { not: Prisma.AnyNull }
-            }
-        })
-
-        if (sites) {
-            const object = sites?.json as { [key: string]: { port: number; dir: string; } }
-            const values = Object.values(object)
-            const map = values.map(async (e) => {
-                const hp = homePath(googleUser.email)
-                const ftp = new FtpLibrary(e.port)
-                await ftp.folderExist(hp)
-            })
-
-            await Promise.all(map)
-        }
 
         return {
             accessToken,

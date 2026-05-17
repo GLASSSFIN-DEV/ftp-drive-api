@@ -10,70 +10,14 @@ import AuthConsent from '@/middleware/auth.validator'
 import { prismaProxy } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 import { IOkResponse } from '@/types/common'
+import { RepositoryMedia } from './media.svc'
 
 const router = new Hono()
+const mediaRepo = new RepositoryMedia()
 
 router.post('/media/upload', AuthConsent.validate(), async (c) => {
-    const account = c.get('account')
-    const homePath = account.homePath
-
-    const body = await c.req.parseBody()
-    const file = body['file']
-    const site = c.req.query('site')
-    const remotePath = c.req.query('remotePath')
-
-    if (!file || typeof file === "string") throw new HttpException({
-        errCode: 'EMPTY_FILE',
-        statusCode: StatusCodes.NOT_FOUND,
-        messages: ['No file found!']
-    })
-
-    if (!remotePath) throw new HttpException({
-        errCode: 'REMOTE_PATH_FAIL',
-        statusCode: StatusCodes.NOT_IMPLEMENTED,
-        messages: ['Please ensure your remote path!']
-    })
-
-    const ftpLibrary = new FtpLibrary(Number(site))
-    const buffer = await file.arrayBuffer()
-    const res = await ftpLibrary.uploadFile(remotePath, { buffer, fileName: file.name })
-
-    return c.json({ ...res.payload })
-})
-
-router.post('/media/uploads', AuthConsent.validate(), async (c) => {
-    const account = c.get('account')
-    const homePath = account.homePath
-
-    const body = await c.req.parseBody({ all: true })
-    const rawFiles = body['files']
-    const site = c.req.query('site')
-    const remotePath = c.req.query('remotePath')
-    const files: File[] = (Array.isArray(rawFiles) ? rawFiles : [rawFiles]).filter(
-        (f): f is File => !!f && typeof f !== "string"
-    );
-
-    if (files.length === 0) throw new HttpException({
-        errCode: 'EMPTY_FILE',
-        statusCode: StatusCodes.NOT_FOUND,
-        messages: ['No file found!']
-    })
-
-    if (!remotePath) throw new HttpException({
-        errCode: 'REMOTE_PATH_FAIL',
-        statusCode: StatusCodes.NOT_IMPLEMENTED,
-        messages: ['Please ensure your remote path!']
-    })
-
-    const ftpLibrary = new FtpLibrary(Number(site))
-    const promise = files.map(async (file) => {
-        const buffer = await file.arrayBuffer()
-        const res = await ftpLibrary.uploadFile(remotePath, { buffer, fileName: file.name })
-        return { upload: res.payload, file }
-    })
-
-    const res = await Promise.all(promise)
-    return c.json(res)
+    const value = await mediaRepo.fileUpload(c)
+    return c.json(value)
 })
 
 router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
@@ -115,7 +59,7 @@ router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
     const ftpLibrary = new FtpLibrary(Number(site))
     const ensureDirs = relativePaths.map(async (e) => {
         const remotePath = (remoteBase + '/' + e).replace(/\/+/g, '/')
-        return await ftpLibrary.folderExist(remotePath)
+        return await ftpLibrary.ensureDir(remotePath)
     })
 
     const pathMap = new Map(relativePaths.map((item, i) => [i, item]))
@@ -125,7 +69,7 @@ router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
         const remotePath = (remoteBase + '/' + path).replace(/\/+/g, '/')
         const res = await ftpLibrary.uploadFile(remotePath, { buffer, fileName: file.name })
 
-        return { upload: res.payload, file }
+        return { upload: res, file }
     })
 
     const dirs = await Promise.all(ensureDirs)
