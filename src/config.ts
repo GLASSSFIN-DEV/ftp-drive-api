@@ -22,6 +22,7 @@ export enum Logs {
 }
 
 const config = {
+    APP_NAME: str({ default: 'DriveAPI' }),
     NODE_ENV: str({
         default: Environments.DEV,
         choices: [...Object.values(Environments)],

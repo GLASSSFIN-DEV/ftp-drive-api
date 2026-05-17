@@ -1,7 +1,7 @@
 import RequestValidator from '@/middleware/req.validator'
 import { Hono } from 'hono'
 import { RepositoryFile } from '@/modules/file/file.svc'
-import { FileChangeDto, FileNewDto } from '@/dto/file.dto'
+import { FileChangeDto } from '@/dto/file.dto'
 import AuthConsent from '@/middleware/auth.validator'
 
 const router = new Hono()

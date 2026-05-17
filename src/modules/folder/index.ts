@@ -28,8 +28,8 @@ router.get('/folder/:id', validateParams(FolderIdDto), AuthConsent.validate(), a
     const value = await folderService.get(c)
     return c.json(value)
 })
-router.get('/folder/:id/query', validateParams(FolderIdDto), AuthConsent.validate(), async (c) => {
-    const value = await folderService.queryPath(c.req.param('id'))
+router.get('/folder/:id/real-path', validateParams(FolderIdDto), AuthConsent.validate(), async (c) => {
+    const value = await folderService.realPath(c.req.param('id'))
     return c.json(value)
 })
 router.get('/my-folders', AuthConsent.validate(), async (c) => {

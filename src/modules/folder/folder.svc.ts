@@ -11,6 +11,7 @@ import { StatusCodes } from "http-status-codes";
 import createPagination, { createOrderBy } from "@/common/pagination";
 import { FolderWhereInput } from "@/generated/prisma/models";
 import { FTPResponse } from "basic-ftp";
+import { UploadSaga } from "../media/upload-saga";
 
 interface IFolderObj {
     action?: {
@@ -47,21 +48,22 @@ interface IFolderObj {
     }[];
 }
 
-export interface ISource { 
+export interface ISource {
     [key: string]: string | number | undefined | FTPResponse
-    ftpHost: string; 
-    ftpPort: number; 
-    remotePath?: string; 
-    oldPath?: string; 
+    ftpHost: string;
+    ftpPort: number;
+    remotePath?: string;
+    oldPath?: string;
 }
 
 export interface IRepositoryFolder {
     newFolder(c: Context): Promise<IOkResponse>;
     changeFolder(c: Context): Promise<IOkResponse>;
     removeFolder(c: Context): Promise<IOkResponse>;
+    createFolderChain(segments: string[], rootParentId: string | null, accountId: string, source: ISource, saga: UploadSaga): Promise<string>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
     get(c: Context): Promise<Object | null>;
-    queryPath(folderId: string): Promise<string>;
+    realPath(folderId: string): Promise<string>;
     myFolders(c: Context): Promise<Object[]>;
 }
 
@@ -73,7 +75,7 @@ export class RepositoryFolder implements IRepositoryFolder {
      * @param folderId 
      * @returns 
      */
-    public async queryPath(folderId: string): Promise<string> {
+    public async realPath(folderId: string): Promise<string> {
         const folders = await prismaProxy.folder.findMany()
         const map = new Map<string, Folder>()
 
@@ -117,38 +119,43 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
-        let parentPath = ''
         const ftp = new FtpLibrary(obj.siteId)
-        if (obj.parentId) parentPath = await this.queryPath(obj.parentId)
+        try {
+            let parentPath = ''
+            await ftp.connect()
+            if (obj.parentId) parentPath = await this.realPath(obj.parentId)
 
-        const workingDir = `${homePath}/${parentPath}`
-        await ftp.ensureDir(workingDir)
+            const workingDir = `${homePath}/${parentPath}`
+            await ftp.ensureDir(workingDir)
 
-        const finalPath = (workingDir + '/' + obj.folderName).replace(/\/+/g, '/')
-        await prismaProxy.$transaction(async (tx) => {
-            const source: ISource = {
-                ftpHost: env.FTP_HOST,
-                ftpPort: obj.siteId,
-                remotePath: finalPath
-            }
-
-            await tx.folder.create({
-                data: {
-                    folderName: obj.folderName,
-                    parentId: obj.parentId,
-                    source: source as unknown as InputJsonObject,
-                    accountId: account.id,
-                    recordStatus: 'ACTIVE'
+            const finalPath = (workingDir + '/' + obj.folderName).replace(/\/+/g, '/')
+            await prismaProxy.$transaction(async (tx) => {
+                const source: ISource = {
+                    ftpHost: env.FTP_HOST,
+                    ftpPort: obj.siteId,
+                    remotePath: finalPath
                 }
-            })
-        })
 
-        await ftp.ensureDir(finalPath)
-        return {
-            statusCode: StatusCodes.CREATED,
-            messages: ['Create Success'],
-            payload: { remotePath: finalPath }
-        } satisfies IOkResponse
+                await tx.folder.create({
+                    data: {
+                        folderName: obj.folderName,
+                        parentId: obj.parentId,
+                        source: source as unknown as InputJsonObject,
+                        accountId: account.id,
+                        recordStatus: 'ACTIVE'
+                    }
+                })
+            })
+
+            await ftp.ensureDir(finalPath)
+            return {
+                statusCode: StatusCodes.CREATED,
+                messages: ['Create Success'],
+                payload: { remotePath: finalPath }
+            } satisfies IOkResponse
+        } finally {
+            ftp.close()
+        }
     }
 
     /**
@@ -184,49 +191,55 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const currentDir = await this.queryPath(exist.id)
-        const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
-        let newWorkDir = lastWorkDir
+        try {
+            await ftp.connect()
+            const currentDir = await this.realPath(exist.id)
+            const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
+            let newWorkDir = lastWorkDir
 
-        // if new parent <> last parent
-        if (obj.parentId && obj.parentId !== exist.parentId) {
-            const parentPath = await this.queryPath(obj.parentId)
-            newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
+            // if new parent <> last parent
+            if (obj.parentId && obj.parentId !== exist.parentId) {
+                const parentPath = await this.realPath(obj.parentId)
+                newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
 
-            await ftp.ensureDir(newWorkDir)
-        }
-
-        // if new folderName <> last folderName
-        if (obj.folderName !== exist.folderName) {
-            newWorkDir = `${newWorkDir}/${obj.folderName}`.replace(/\/+/g, '/')
-            await ftp.ensureDir(newWorkDir)
-        }
-
-        await prismaProxy.$transaction(async (tx) => {
-            const source: ISource = {
-                ftpHost: env.FTP_HOST,
-                ftpPort: obj.siteId,
-                remotePath: lastWorkDir, newWorkDir
+                await ftp.ensureDir(newWorkDir)
             }
 
-            await tx.folder.update({
-                data: {
-                    folderName: obj.folderName,
-                    parentId: obj.parentId,
-                    source: source as unknown as InputJsonObject,
-                    accountId: account.id,
-                    updatedAt: new Date()
-                },
-                where: { id, accountId: account.id }
-            })
-        })
+            // if new folderName <> last folderName
+            if (obj.folderName !== exist.folderName) {
+                newWorkDir = `${newWorkDir}/${obj.folderName}`.replace(/\/+/g, '/')
+                await ftp.ensureDir(newWorkDir)
+            }
 
-        await ftp.rename(lastWorkDir, newWorkDir)
-        return {
-            statusCode: StatusCodes.CREATED,
-            messages: ['Change Success'],
-            payload: { lastWorkDir, newWorkDir }
-        } satisfies IOkResponse
+            await prismaProxy.$transaction(async (tx) => {
+                const source: ISource = {
+                    ftpHost: env.FTP_HOST,
+                    ftpPort: obj.siteId,
+                    remotePath: lastWorkDir, newWorkDir
+                }
+
+                await tx.folder.update({
+                    data: {
+                        folderName: obj.folderName,
+                        parentId: obj.parentId,
+                        source: source as unknown as InputJsonObject,
+                        accountId: account.id,
+                        updatedAt: new Date()
+                    },
+                    where: { id, accountId: account.id }
+                })
+            })
+
+            await ftp.rename(lastWorkDir, newWorkDir)
+
+            return {
+                statusCode: StatusCodes.CREATED,
+                messages: ['Change Success'],
+                payload: { lastWorkDir, newWorkDir }
+            } satisfies IOkResponse
+        } finally {
+            ftp.close()
+        }
     }
 
     /**
@@ -261,19 +274,59 @@ export class RepositoryFolder implements IRepositoryFolder {
         })
 
         const ftp = new FtpLibrary(source.ftpPort)
-        const currentDir = await this.queryPath(id)
-        const workingDir = `${homePath}/${currentDir}`
+        try {
+            await ftp.connect()
+            const currentDir = await this.realPath(id)
+            const workingDir = `${homePath}/${currentDir}`
 
-        await ftp.removeDir(workingDir.replace(/\/+/g, '/'))
-        
-        return {
-            statusCode: StatusCodes.OK,
-            messages: ['Remove Success'],
-            payload: {
-                folder: exist,
-                files: fileIds,
-            }
-        } satisfies IOkResponse
+            await ftp.removeDir(workingDir.replace(/\/+/g, '/'))
+
+            return {
+                statusCode: StatusCodes.OK,
+                messages: ['Remove Success'],
+                payload: {
+                    folder: exist,
+                    files: fileIds,
+                }
+            } satisfies IOkResponse
+        } finally {
+            ftp.close()
+        }
+    }
+
+    /**
+     * 
+     * @param segments 
+     * @param rootParentId 
+     * @param accountId 
+     * @param source 
+     * @returns 
+     */
+    async createFolderChain(
+        segments: string[],       // ["myFolder", "sub"]
+        rootParentId: string | null,
+        accountId: string,
+        source: ISource,
+        saga: UploadSaga, 
+    ): Promise<string> {           // returns the leaf folderId
+        let parentId: string | null = rootParentId
+
+        for (const seg of segments) {
+            const created = await prismaProxy.folder.create({
+                data: {
+                    folderName: seg,
+                    parentId: parentId ?? undefined,
+                    accountId,
+                    source: source as any,
+                    recordStatus: 'ACTIVE',
+                },
+            })
+
+            saga.track({ type: 'folder', id: created.id })
+            parentId = created.id
+        }
+
+        return parentId as string  // leaf folder id
     }
 
     /**

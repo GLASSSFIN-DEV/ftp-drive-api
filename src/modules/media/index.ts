@@ -4,18 +4,15 @@ import { FtpLibrary } from '@/lib/ftp'
 import { HttpException } from '@/common/http-exception'
 import { StatusCodes } from 'http-status-codes'
 import RequestValidator from '@/middleware/req.validator'
-import { MediaDropDto, MediaStreamDto } from '@/dto/media.dto'
-import { lookup } from 'mime-types'
+import { MediaStreamDto, UploadParam } from '@/dto/media.dto'
 import AuthConsent from '@/middleware/auth.validator'
-import { prismaProxy } from '@/lib/prisma'
-import { Prisma } from '@/generated/prisma/client'
-import { IOkResponse } from '@/types/common'
 import { RepositoryMedia } from './media.svc'
+import { validateParams } from '@/middleware/param.validator'
 
 const router = new Hono()
 const mediaRepo = new RepositoryMedia()
 
-router.post('/media/upload', AuthConsent.validate(), async (c) => {
+router.post('/media/upload', validateParams(UploadParam), AuthConsent.validate(), async (c) => {
     const value = await mediaRepo.fileUpload(c)
     return c.json(value)
 })
@@ -77,41 +74,13 @@ router.post('/media/upload/folder', AuthConsent.validate(), async (c) => {
     return c.json({ res, dirs })
 })
 
-router.post('/media/drop', RequestValidator.validate(MediaDropDto), AuthConsent.validate(), async (c) => {
-    const account = c.get('account')
-    const homePath = account.homePath
-
-    const body = c.get('validatedBody') as MediaDropDto
-    const ftpLibrary = new FtpLibrary()
-    const res = await ftpLibrary.removeFile(body.remotePath, body.fileName)
-
-    return c.json(res)
-})
-
 router.post('/media/stream', RequestValidator.validate(MediaStreamDto), AuthConsent.validate(), async (c) => {
-    const body = c.get('validatedBody') as MediaStreamDto
-    const ftpLibrary = new FtpLibrary()
-    const res = await ftpLibrary.streamFile(body.remotePath, body.fileName)
-    const mimeType = lookup(body.fileName)
-    const headers: Record<string, string> = {
-        "Content-Type": mimeType as string ?? 'application/octet-stream',
-        "Content-Disposition": `inline; filename="${body.fileName}"`,
-        "Cache-Control": "no-store",
-    }
-
-    return new Response(res.stream, { status: StatusCodes.OK, headers })
+    const value = await mediaRepo.stream(c)
+    return value
 })
 
 router.get('/media/site', AuthConsent.validate(), async (c) => {
-    const sites = await prismaProxy.option.findFirst({
-        select: { key: true, json: true },
-        where: {
-            key: 'ftp-site',
-            json: { not: Prisma.AnyNull }
-        }
-    })
-
-    const value = sites?.json as { [key: string]: { port: number; dir: string; } }
+    const value = await mediaRepo.site(c)
     return c.json(value)
 })
 

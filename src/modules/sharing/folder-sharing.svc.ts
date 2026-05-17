@@ -80,7 +80,7 @@ export class RepositoryFolderSharing implements IRepositoryFolderSharing {
 
         const ftp = new FtpLibrary(source.ftpPort)
         const link = `code=${v7()}`
-        const remotePath = await this.folderRepo.queryPath(findFolder.id)
+        const remotePath = await this.folderRepo.realPath(findFolder.id)
 
         await ftp.ensureDir(remotePath)
         await prismaProxy.$transaction(async (tx) => {

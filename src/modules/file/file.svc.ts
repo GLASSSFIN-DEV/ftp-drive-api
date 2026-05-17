@@ -75,39 +75,44 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const remotePath = await this.folderRepo.queryPath(folder.id)
-        const workingDir = `${homePath}/${remotePath}`.replace(/\/+/g, '/')
-        await ftp.ensureDir(workingDir)
-        const fileHash = await ftp.send(workingDir, obj.fileName, 'XMD5')
+        try {
+            await ftp.connect()
+            const remotePath = await this.folderRepo.realPath(folder.id)
+            const workingDir = `${homePath}/${remotePath}`.replace(/\/+/g, '/')
+            await ftp.ensureDir(workingDir)
+            const fileHash = await ftp.send(workingDir, obj.fileName, 'XMD5')
 
-        await prismaProxy.$transaction(async (tx) => {
-            const source: ISource = {
-                ftpHost: env.FTP_HOST,
-                ftpPort: obj.siteId,
-                remotePath: workingDir,
-                fileHash: fileHash as FTPResponse
-            }
-
-            await tx.file.create({
-                data: {
-                    accountId: account.id,
-                    folderId: obj.folderId,
-                    fileName: obj.fileName,
-                    fileSize: obj.fileSize,
-                    fileType: obj.fileType,
-                    fileHash: fileHash.message,
-                    source: source as unknown as InputJsonObject,
-                    recordStatus: 'ACTIVE'
+            await prismaProxy.$transaction(async (tx) => {
+                const source: ISource = {
+                    ftpHost: env.FTP_HOST,
+                    ftpPort: obj.siteId,
+                    remotePath: workingDir,
+                    fileHash: fileHash as FTPResponse
                 }
-            })
-        })
 
-        const file = await ftp.getInfo(workingDir, obj.fileName)
-        return {
-            statusCode: StatusCodes.CREATED,
-            messages: ['File uploaded'],
-            payload: { remotePath, file }
-        } satisfies IOkResponse
+                await tx.file.create({
+                    data: {
+                        accountId: account.id,
+                        folderId: obj.folderId,
+                        fileName: obj.fileName,
+                        fileSize: obj.fileSize,
+                        fileType: obj.fileType,
+                        fileHash: fileHash.message,
+                        source: source as unknown as InputJsonObject,
+                        recordStatus: 'ACTIVE'
+                    }
+                })
+            })
+
+            const file = await ftp.getInfo(workingDir, obj.fileName)
+            return {
+                statusCode: StatusCodes.CREATED,
+                messages: ['File uploaded'],
+                payload: { remotePath, file }
+            } satisfies IOkResponse
+        } finally {
+            ftp.close()
+        }
     }
 
     /**
@@ -142,50 +147,56 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         const ftp = new FtpLibrary(obj.siteId)
-        const currentDir = await this.folderRepo.queryPath(folder.id)
-        const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
-        let newWorkDir = lastWorkDir
+        try {
+            await ftp.connect()
+            const currentDir = await this.folderRepo.realPath(folder.id)
+            const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
+            let newWorkDir = lastWorkDir
 
-        // if new parent <> last parent
-        if (obj.folderId && obj.folderId !== exist.folderId) {
-            const parentPath = await this.folderRepo.queryPath(obj.folderId)
-            newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
+            // if new parent <> last parent
+            if (obj.folderId && obj.folderId !== exist.folderId) {
+                const parentPath = await this.folderRepo.realPath(obj.folderId)
+                newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
 
-            await ftp.ensureDir(newWorkDir)
-        }
-
-        const fileHash = await ftp.send(newWorkDir, obj.fileName, 'XMD5')
-        await prismaProxy.$transaction(async (tx) => {
-            const source: ISource = {
-                ftpHost: env.FTP_HOST,
-                ftpPort: obj.siteId,
-                remotePath: lastWorkDir, newWorkDir,
-                fileHash: fileHash as FTPResponse
+                await ftp.ensureDir(newWorkDir)
             }
 
-            await tx.file.update({
-                data: {
-                    accountId: account.id,
-                    folderId: obj.folderId,
-                    fileName: obj.fileName,
-                    fileHash: fileHash.message,
-                    source: source as unknown as InputJsonObject,
-                },
-                where: { id, accountId: account.id }
+            const fileHash = await ftp.send(newWorkDir, obj.fileName, 'XMD5')
+            await prismaProxy.$transaction(async (tx) => {
+                const source: ISource = {
+                    ftpHost: env.FTP_HOST,
+                    ftpPort: obj.siteId,
+                    remotePath: lastWorkDir, newWorkDir,
+                    fileHash: fileHash as FTPResponse
+                }
+
+                await tx.file.update({
+                    data: {
+                        accountId: account.id,
+                        folderId: obj.folderId,
+                        fileName: obj.fileName,
+                        fileHash: fileHash.message,
+                        source: source as unknown as InputJsonObject,
+                    },
+                    where: { id, accountId: account.id }
+                })
             })
-        })
 
-        const file = await ftp.getInfo(newWorkDir, obj.fileName)
-        await ftp.rename(
-            (lastWorkDir + '/' + obj.fileName).replace(/\/+/g, '/'),
-            (newWorkDir + '/' + obj.fileName).replace(/\/+/g, '/')
-        )
+            const file = await ftp.getInfo(newWorkDir, obj.fileName)
+            await ftp.rename(
+                (lastWorkDir + '/' + obj.fileName).replace(/\/+/g, '/'),
+                (newWorkDir + '/' + obj.fileName).replace(/\/+/g, '/')
+            )
 
-        return {
-            statusCode: StatusCodes.CREATED,
-            messages: ['File uploaded'],
-            payload: { lastWorkDir, newWorkDir, file }
-        } satisfies IOkResponse
+
+            return {
+                statusCode: StatusCodes.CREATED,
+                messages: ['File uploaded'],
+                payload: { lastWorkDir, newWorkDir, file }
+            } satisfies IOkResponse
+        } finally {
+            ftp.close()
+        }
     }
 
     /**
@@ -217,7 +228,9 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         const ftp = new FtpLibrary(source.ftpPort)
-        const currentDir = await this.folderRepo.queryPath(exist.id)
+        try {
+            await ftp.connect()
+        const currentDir = await this.folderRepo.realPath(exist.id)
         const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
         await ftp.removeFile(lastWorkDir, exist.fileName)
 
@@ -225,6 +238,9 @@ export class RepositoryFile implements IRepositoryFile {
             statusCode: StatusCodes.OK,
             messages: ['File Deleted']
         } satisfies IOkResponse
+        } finally {
+            ftp.close()
+        }
     }
 
     /**

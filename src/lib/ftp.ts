@@ -6,6 +6,12 @@ import { PassThrough, Readable } from 'stream'
 import { StatusCodes } from 'http-status-codes'
 import logger from '@/lib/logger'
 
+export type FtpEntry = {
+    path:        string       // full remote path
+    isDirectory: boolean
+    size:        number
+    name:        string
+}
 interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
     uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<{
@@ -16,13 +22,18 @@ export interface IFtpLibrary {
         stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
         size: number;
     }>;
-    getInfo(remotePath: string, name: string): Promise<FileInfo>;
+    findFile(remotePath: string, name: string): Promise<FileInfo>;
     rename(oldPath: string, newPath: string): Promise<FTPResponse>;
     removeFile(remotePath: string, fileName: string): Promise<FTPResponse>;
     removeDir(remotePath: string): Promise<void>;
     ensureDir(remotePath: string): Promise<void>;
+    listAllFiles(rootDir: string): Promise<FtpEntry[]>;
+    listAllFilePaths(rootDir: string): Promise<string[]>;
+    fileExists(remotePath: string): Promise<boolean>;
     send(remotePath: string, name: string, command: string): Promise<FTPResponse>;
-    debug(remotePath: string): Promise<{ fromPath: string; items: FileInfo[]; toPath: string; }>;
+    debug(rootDir: string): Promise<FtpEntry[]>;
+    connect(): Promise<void>;
+    close(): void;
 }
 
 export class FtpLibrary implements IFtpLibrary {
@@ -36,7 +47,7 @@ export class FtpLibrary implements IFtpLibrary {
         this.client.ftp.verbose = true
     }
 
-    private async connect() {
+    async connect() {
         const config: IFtpConfig = env.FTP_CONFIG
         const opts: AccessOptions = {
             host: env.FTP_HOST,
@@ -56,6 +67,13 @@ export class FtpLibrary implements IFtpLibrary {
                 messages: ['Cannot connect to FTP Server']
             })
         }
+    }
+
+    /**
+     * safe close connection
+     */
+    close(): void {
+        this.client.close()
     }
 
     /**
@@ -81,7 +99,6 @@ export class FtpLibrary implements IFtpLibrary {
         file: FileInfo;
         workingDir: string;
     }> {
-        await this.connect()
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
@@ -92,10 +109,9 @@ export class FtpLibrary implements IFtpLibrary {
 
         await this.client.uploadFrom(readable, obj.fileName)
         const workingDir = await this.client.pwd()
-        const file = await this.getInfo(workingDir, obj.fileName)
+        const file = await this.findFile(workingDir, obj.fileName)
 
         this.client.trackProgress()
-        this.client.close()
 
         return { workingDir, file }
     }
@@ -109,14 +125,12 @@ export class FtpLibrary implements IFtpLibrary {
         stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
         size: number;
     }> {
-        await this.connect()
         await this.client.pwd()
-        const client = this.client;
 
         this.client.trackProgress(info => {
             logger.http('[ftp]', { ...info })
         })
-        
+
         const lists = await this.client.list(remotePath)
         const files = lists.filter(e => !e.isDirectory)
         const file = files.find(e => e.name === fileName)
@@ -132,7 +146,6 @@ export class FtpLibrary implements IFtpLibrary {
         await this.client.downloadTo(pass, fileName)
             .then(() => {
                 pass.end();
-                this.client.close();
             })
             .catch((err) => {
                 pass.destroy(err);
@@ -148,7 +161,6 @@ export class FtpLibrary implements IFtpLibrary {
             },
             cancel() {
                 pass.destroy();
-                client.close()
             },
         });
 
@@ -164,8 +176,7 @@ export class FtpLibrary implements IFtpLibrary {
      * @param name 
      * @returns 
      */
-    async getInfo(remotePath: string, name: string): Promise<FileInfo> {
-        await this.connect()
+    async findFile(remotePath: string, name: string): Promise<FileInfo> {
         await this.client.pwd()
 
         const lists = await this.client.list(remotePath)
@@ -178,7 +189,6 @@ export class FtpLibrary implements IFtpLibrary {
                 messages: ['File not found in listing directory']
             })
 
-        this.client.close()
         return file
     }
 
@@ -188,11 +198,9 @@ export class FtpLibrary implements IFtpLibrary {
      * @param newPath 
      */
     async rename(oldPath: string, newPath: string): Promise<FTPResponse> {
-        await this.connect()
         await this.client.pwd()
         const res = await this.client.rename(oldPath, newPath)
 
-        this.client.close()
         return res
     }
 
@@ -202,13 +210,10 @@ export class FtpLibrary implements IFtpLibrary {
      * @param fileName 
      */
     async removeFile(remotePath: string, fileName: string): Promise<FTPResponse> {
-        await this.connect()
         await this.client.pwd()
 
         const fullPath = `${remotePath}/${fileName}`
         const res = await this.client.remove(fullPath)
-
-        this.client.close()
 
         return res
     }
@@ -218,11 +223,8 @@ export class FtpLibrary implements IFtpLibrary {
      * @param remotePath 
      */
     async removeDir(remotePath: string): Promise<void> {
-        await this.connect()
         await this.client.pwd()
-
         await this.client.removeDir(remotePath)
-        this.client.close()
     }
 
     /**
@@ -230,9 +232,70 @@ export class FtpLibrary implements IFtpLibrary {
     * @param remotePath 
     */
     async ensureDir(remotePath: string): Promise<void> {
-        await this.connect()
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
+    }
+
+    /**
+     * 
+     */
+    async listAllFiles(rootDir: string = '/'): Promise<FtpEntry[]> {
+        const results: FtpEntry[] = []
+        const client = this.client
+        
+        async function walk(currentPath: string) {
+            // list() lists the current working directory
+            const entries: FileInfo[] = await client.list(currentPath)
+
+            for (const entry of entries) {
+                const fullPath = `${currentPath}/${entry.name}`.replace(/\/+/g, '/')
+
+                results.push({
+                    path: fullPath,
+                    isDirectory: entry.isDirectory,
+                    size: entry.size,
+                    name: entry.name,
+                })
+
+                if (entry.isDirectory) {
+                    // recurse into subdirectory
+                    await walk(fullPath)
+                }
+            }
+        }
+
+        await walk(rootDir)
+        return results
+    }
+
+    /**
+     * Used by reconciler — returns ONLY file paths (no dirs)
+     * 
+     * @param rootDir 
+     * @returns 
+     */
+    async listAllFilePaths(rootDir: string = '/'): Promise<string[]> {
+        const all = await this.listAllFiles(rootDir)
+        return all
+            .filter(e => !e.isDirectory)
+            .map(e => e.path)
+    }
+
+    /**
+     * Check a single file exists without full listing 
+     * 
+     * @param remotePath 
+     * @returns 
+     */
+    async fileExists(remotePath: string): Promise<boolean> {
+        try {
+            const dir     = remotePath.substring(0, remotePath.lastIndexOf('/'))
+            const name    = remotePath.substring(remotePath.lastIndexOf('/') + 1)
+            const entries = await this.client.list(dir)
+            return entries.some(e => e.name === name && !e.isDirectory)
+        } catch {
+            return false
+        }
     }
 
     /**
@@ -241,7 +304,6 @@ export class FtpLibrary implements IFtpLibrary {
      * @param name 
      */
     async send(remotePath: string, name: string, command: string): Promise<FTPResponse> {
-        await this.connect()
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
@@ -263,13 +325,9 @@ export class FtpLibrary implements IFtpLibrary {
      * @param remotePath 
      * @returns 
      */
-    async debug(remotePath: string): Promise<{ fromPath: string; items: FileInfo[]; toPath: string; }> {
-        await this.connect()
-        const fromPath = await this.client.pwd()
-        await this.client.ensureDir(remotePath)
-        const items = await this.client.list()
-        const toPath = await this.client.pwd()
+    async debug(rootDir: string = '/'): Promise<FtpEntry[]> {
+        const listAllFiles = await this.listAllFiles(rootDir)
 
-        return { fromPath, items, toPath }
+        return listAllFiles
     }
 }

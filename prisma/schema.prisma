@@ -17,6 +17,7 @@ datasource db {
 enum RecordStatus {
   ACTIVE
   NOT_ACTIVE
+  DEAD
 
   @@schema("drive")
 }

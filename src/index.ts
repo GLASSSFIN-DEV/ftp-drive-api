@@ -14,6 +14,7 @@ import { swaggerUI } from '@hono/swagger-ui'
 import { definition } from './lib/swagger'
 import { useTelemetry } from './middleware/logger.middleware'
 import { cors } from 'hono/cors'
+import inngestRoute from './modules/inngest'
 
 type HonoVariable = {
   Variables: {
@@ -51,5 +52,6 @@ app.use('*', timeout(5_000))
 
 // setup routers, based on modules folder
 app.route('/v1', modules)
+app.route('/v1', inngestRoute)
 
 export default app

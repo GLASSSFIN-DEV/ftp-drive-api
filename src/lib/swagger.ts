@@ -975,50 +975,6 @@ export const definition = {
         },
       },
     },
-    '/v1/media/drop': {
-      post: {
-        tags: ['Media'],
-        summary: 'Remove Media',
-        description: 'Remove file from FTP storage',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/MediaDropDto',
-              },
-            },
-          },
-        },
-        responses: {
-          200: {
-            description: 'Success',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/OkResponse',
-                },
-              },
-            },
-          },
-          400: {
-            description: 'Bad Request',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/FailResponse',
-                },
-              },
-            },
-          },
-        },
-      },
-    },
     '/v1/media/stream': {
       post: {
         tags: ['Media'],
@@ -1304,7 +1260,7 @@ export const definition = {
             name: 'siteId',
             required: true,
             schema: {
-              type: 'number',
+              type: 'integer',
             },
           },
         ],

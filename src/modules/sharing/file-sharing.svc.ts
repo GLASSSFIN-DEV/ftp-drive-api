@@ -80,29 +80,35 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
         })
 
         const ftp = new FtpLibrary(source.ftpPort)
-        const link = `code=${v7()}`
-        const remotePath = await this.folderRepo.queryPath(findFile.folderId)
+        try {
+            await ftp.connect()
+            const link = `code=${v7()}`
+            const remotePath = await this.folderRepo.realPath(findFile.folderId)
 
-        await ftp.getInfo(remotePath, findFile.fileName)
-        await prismaProxy.$transaction(async (tx) => {
-            await tx.fileSharing.create({
-                data: {
-                    fileId: body.fileId,
-                    toAccountId: body.toAccountId,
-                    permission: body.permission,
-                    expiredAt: body.expiredAt,
-                    generatedLink: link,
-                    accountId: account.id
-                }
+            await ftp.findFile(remotePath, findFile.fileName)
+            await prismaProxy.$transaction(async (tx) => {
+                await tx.fileSharing.create({
+                    data: {
+                        fileId: body.fileId,
+                        toAccountId: body.toAccountId,
+                        permission: body.permission,
+                        expiredAt: body.expiredAt,
+                        generatedLink: link,
+                        accountId: account.id
+                    }
+                })
+
+                if (exist) await tx.fileSharing.delete({ where: { id: exist.id } })
             })
 
-            if (exist) await tx.fileSharing.delete({ where: { id: exist.id } })
-        })
 
-        return {
-            statusCode: StatusCodes.CREATED,
-            messages: ['Sharing created!'],
-            payload: { link }
+            return {
+                statusCode: StatusCodes.CREATED,
+                messages: ['Sharing created!'],
+                payload: { link }
+            }
+        } finally {
+            ftp.close()
         }
     }
 

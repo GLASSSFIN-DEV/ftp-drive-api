@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsPositive, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsPositive, IsString, IsUUID } from "class-validator";
 
 export class MediaDropDto {
     @IsString()
@@ -26,4 +26,10 @@ export class MediaStreamDto {
     @IsNumber()
     @IsPositive()
     site!: number;
+}
+
+export class UploadParam {
+    @IsUUID()
+    @IsNotEmpty()
+    folderId!: string;
 }

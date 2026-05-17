@@ -1,5 +1,4 @@
 import { HttpException } from "@/common/http-exception";
-import { LoginDto } from "@/dto/login.dto";
 import { prismaProxy } from "@/lib/prisma";
 import { sign } from 'hono/jwt';
 import { env } from '@/config';
@@ -9,7 +8,6 @@ import { IOkResponse } from "@/types/common";
 import { StatusCodes } from "http-status-codes";
 
 interface IRepositoryAuth {
-    login(c: Context): Promise<ResObj>;
     logout(c: Context): Promise<IOkResponse>;
     refresh(c: Context): Promise<ResObj>;
     users(c: Context): Promise<IUserObj[]>;
@@ -31,41 +29,6 @@ export interface ResObj {
 }
 
 export class Auth implements IRepositoryAuth {
-    /**
-     * 
-     * @param c
-     * @returns 
-     */
-    async login(c: Context): Promise<ResObj> {
-        const obj: LoginDto = c.get('validatedBody') as LoginDto
-        const account = await prismaProxy.account.findFirst({
-            where: {
-                username: obj.username.toLowerCase(),
-                recordStatus: 'ACTIVE'
-            }
-        })
-
-        if (!account) throw new HttpException({
-            errCode: 'ACCOUNT_NOT_FOUND',
-            statusCode: 404,
-            messages: ['Your account isn`t found']
-        })
-
-        const _o: JWTPayload = { sub: account.id, role: account.rbacId }
-        const accessToken = await sign(_o, env.JWT_SECRET, 'HS256')
-        const refreshToken = await sign({ sub: account.id }, env.JWT_SECRET, 'HS256')
-
-        await prismaProxy.$transaction(async (tx) => {
-            await tx.session.create({ data: { accountId: account.id, jwtHash: accessToken, recordStatus: 'ACTIVE' } })
-        })
-
-        return {
-            accessToken,
-            refreshToken,
-            expireAt: env.JWT_EXPIRE
-        } satisfies ResObj
-    }
-
     /**
      * 
      * @param c 
