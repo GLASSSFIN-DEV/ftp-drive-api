@@ -625,8 +625,8 @@ export const definition = {
             name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
-            description: "Id",
+            schema: { type: "string", format: "uuid" },
+            description: "File Id (UUID)",
           }
         ],
         responses: {
@@ -652,7 +652,7 @@ export const definition = {
           },
         },
       },
-      post: {
+      put: {
         tags: ['File'],
         summary: 'File Change',
         security: [
@@ -676,8 +676,8 @@ export const definition = {
             name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
-            description: "Id",
+            schema: { type: "string", format: "uuid" },
+            description: "File Id (UUID)",
           }
         ],
         responses: {
@@ -716,8 +716,8 @@ export const definition = {
             name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
-            description: "Id",
+            schema: { type: "string", format: "uuid" },
+            description: "File Id (UUID)",
           }
         ],
         responses: {
@@ -773,7 +773,7 @@ export const definition = {
             in: "query",
             required: false,
             schema: { type: "string" },
-            description: "Search keyword to filter folders",
+            description: "Search keyword to filter files",
           },
           {
             name: "startDate",
@@ -821,8 +821,8 @@ export const definition = {
             name: "folderId",
             in: "path",
             required: true,
-            schema: { type: "string" },
-            description: "Folder selected",
+            schema: { type: "string", format: "uuid" },
+            description: "Folder Id (UUID) to list files from",
           }
         ],
         responses: {
@@ -1318,6 +1318,111 @@ export const definition = {
           },
           401: {
             description: 'Unauthorized',
+          },
+        },
+      },
+    },
+    '/v1/debug/orphans': {
+      get: {
+        tags: ['Debug'],
+        summary: 'Check Orphaned Files and Folders',
+        description: 'Returns list of DB records missing on FTP and FTP entries missing in DB',
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    summary: {
+                      type: 'object',
+                      properties: {
+                        dbFoldersMissingOnFtp: { type: 'integer', example: 5 },
+                        ftpFoldersMissingInDb: { type: 'integer', example: 2 },
+                        dbFilesMissingOnFtp: { type: 'integer', example: 10 },
+                        ftpFilesMissingInDb: { type: 'integer', example: 3 },
+                      },
+                    },
+                    orphans: {
+                      type: 'object',
+                      properties: {
+                        dbFoldersMissingOnFtp: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string' },
+                              folderName: { type: 'string' },
+                              path: { type: 'string' },
+                            },
+                          },
+                        },
+                        ftpFoldersMissingInDb: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              path: { type: 'string' },
+                              siteId: { type: 'integer' },
+                            },
+                          },
+                        },
+                        dbFilesMissingOnFtp: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string' },
+                              fileName: { type: 'string' },
+                              path: { type: 'string' },
+                            },
+                          },
+                        },
+                        ftpFilesMissingInDb: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              path: { type: 'string' },
+                              siteId: { type: 'integer' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        tags: ['Debug'],
+        summary: 'Delete Orphaned Files and Folders',
+        description: 'Marks DB orphans as DEAD and deletes FTP orphans',
+        responses: {
+          200: {
+            description: 'Success',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    deleted: {
+                      type: 'object',
+                      properties: {
+                        dbFolders: { type: 'integer', example: 5 },
+                        dbFiles: { type: 'integer', example: 10 },
+                        ftpFolders: { type: 'integer', example: 2 },
+                        ftpFiles: { type: 'integer', example: 3 },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
