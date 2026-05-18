@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator";
+import { ArrayMaxSize, ArrayUnique, IsArray, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator";
+import { Transform } from "class-transformer";
 
 export class FolderNewDto {
     @IsString()
@@ -8,6 +9,20 @@ export class FolderNewDto {
     @IsString()
     @IsOptional()
     parentId?: string;
+
+    @IsArray()
+    @ArrayUnique()
+    @IsOptional()
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @Transform(({ value }) =>
+        Array.isArray(value)
+            ? value
+                .map((v) => String(v).trim())
+                .filter(Boolean)
+            : []
+    )
+    label?: string[] = []
 
     @IsNumber()
     @IsPositive()
@@ -22,6 +37,20 @@ export class FolderChangeDto {
     @IsString()
     @IsOptional()
     parentId?: string;
+
+    @IsArray()
+    @ArrayUnique()
+    @IsOptional()
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @Transform(({ value }) =>
+        Array.isArray(value)
+            ? value
+                .map((v) => String(v).trim())
+                .filter(Boolean)
+            : []
+    )
+    label?: string[] = []
 
     @IsNumber()
     @IsPositive()

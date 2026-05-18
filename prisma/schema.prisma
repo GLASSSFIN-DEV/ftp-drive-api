@@ -64,9 +64,6 @@ model Account {
   folderSharingToAccounts FolderSharing[] @relation("folderSharingToAccounts")
   fileSharingAccounts     FileSharing[]   @relation("fileSharingAccounts")
   fileSharingToAccounts   FileSharing[]   @relation("fileSharingToAccounts")
-  nodeAccounts            Node[]          @relation("nodeAccounts")
-  nodeShareAccounts       NodeShare[]     @relation("nodeShareAccounts")
-  nodeShareToAccounts     NodeShare[]     @relation("nodeShareToAccounts")
 
   @@index([dirId])
   @@index([rbacId])
@@ -137,6 +134,7 @@ model Folder {
   accountId    String
   folderName   String
   source       Json
+  label        Json[]       @default([])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime?
   recordStatus RecordStatus @default(NOT_ACTIVE)
@@ -265,52 +263,5 @@ model TraceSpan {
   @@index([context])
   @@index([createdAt(sort: Desc)])
   @@index([durationMs])
-  @@schema("drive")
-}
-
-// File and Folder would be removed
-model Node {
-  id           String       @id @default(uuid())
-  parentId     String?
-  name         String
-  source       Json
-  isDirectory  Boolean
-  file         Json?
-  folder       Json?
-  accountId    String
-  createdAt    DateTime
-  updatedAt    DateTime?
-  recordStatus RecordStatus @default(ACTIVE)
-
-  account    Account     @relation("nodeAccounts", fields: [accountId], references: [id])
-  parent     Node?       @relation("children", fields: [parentId], references: [id])
-  nodes      Node[]      @relation("children")
-  nodeShares NodeShare[]
-
-  @@index([accountId])
-  @@index([parentId])
-  @@index([recordStatus])
-  @@index([isDirectory])
-  @@schema("drive")
-}
-
-model NodeShare {
-  id            String          @id @default(uuid())
-  toAccountId   String
-  nodeId        String
-  accountId     String
-  expiredAt     DateTime?
-  permission    SharePermission @default(READ_ONLY)
-  generatedLink String
-  createdAt     DateTime
-
-  account   Account @relation("nodeShareAccounts", fields: [accountId], references: [id])
-  toAccount Account @relation("nodeShareToAccounts", fields: [toAccountId], references: [id])
-  node      Node    @relation(fields: [nodeId], references: [id])
-
-  @@index([accountId])
-  @@index([toAccountId])
-  @@index([nodeId])
-
   @@schema("drive")
 }

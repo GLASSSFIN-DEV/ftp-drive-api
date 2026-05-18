@@ -140,6 +140,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                     data: {
                         folderName: obj.folderName,
                         parentId: obj.parentId,
+                        label: obj.label,
                         source: source as unknown as InputJsonObject,
                         accountId: account.id,
                         recordStatus: 'ACTIVE'
@@ -222,6 +223,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                     data: {
                         folderName: obj.folderName,
                         parentId: obj.parentId,
+                        label: obj.label,
                         source: source as unknown as InputJsonObject,
                         accountId: account.id,
                         updatedAt: new Date()
