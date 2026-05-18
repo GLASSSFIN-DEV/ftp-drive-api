@@ -10,32 +10,52 @@ import {
 import logger from '@/lib/logger'
 import { HttpException } from '@/common/http-exception'
 
+const validatorOpts: ValidatorOptions = {
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  enableDebugMessages: true,
+}
+
 export default class Validate {
+  /**
+   * 
+   * @param classInstance 
+   * @param entity 
+   * @param isArray 
+   * @returns 
+   */
   static for = <T>(
     classInstance: ClassConstructor<T>,
-    entity: 'body' | 'param' | 'query' = 'body'
+    entity: 'body' | 'param' | 'query' = 'body',
+    isArray: boolean = false,
   ) => {
     return createMiddleware(async (c, next) => {
       const validationErrorText = 'Request entity not valid'
-
       try {
-        const body = entity === 'param' 
-          ? c.req.param() : entity === 'query' 
-          ? c.req.queries() : await c.req.json()
+        let errors: ValidationError[] = []
+        const body = entity === 'param'
+          ? c.req.param() : entity === 'query'
+            ? c.req.queries() : await c.req.json()
 
-        const convertedObject = plainToInstance(classInstance, body, { 
+        const convertedObject = plainToInstance(classInstance, body, {
           enableImplicitConversion: true,
           exposeDefaultValues: true,
         })
 
-        const errors = await validate(
-          convertedObject as Record<string, unknown>,
-          {
-            whitelist: true,
-            forbidNonWhitelisted: true,
-            enableDebugMessages: true,
-          } as ValidatorOptions
-        )
+        if (isArray) {
+          if (!Array.isArray(convertedObject)) throw new HttpException({
+            errCode: 'VALIDATION_ERROR',
+            statusCode: 422,
+            messages: ['Your request is expected array!'],
+          })
+
+          for (const obj of convertedObject) {
+            const e = await validate(obj, validatorOpts)
+            errors = errors.concat(e)
+          }
+        } else {
+          errors = await validate(convertedObject as Record<string, unknown>, validatorOpts)
+        }
 
         logger.http(`[${entity}]`, { body, convertedObject, errors })
         if (!errors.length) {
@@ -74,11 +94,18 @@ export default class Validate {
   }
 }
 
-export function getAllConstraintKeys(
-  jsonObject: ValidationError[]
-): string[] {
+/**
+ * 
+ * @param jsonObject 
+ * @returns 
+ */
+function getAllConstraintKeys(jsonObject: ValidationError[]): string[] {
   let keys: string[] = []
 
+  /**
+   * 
+   * @param obj 
+   */
   function traverse(obj: ValidationError[]) {
     obj.forEach((item) => {
       if (item.constraints) {
