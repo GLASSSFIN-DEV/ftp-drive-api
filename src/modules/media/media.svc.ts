@@ -14,6 +14,8 @@ import { lookup } from "mime-types";
 import { Prisma, RecordStatus } from '@/generated/prisma/client'
 import { JsonValue } from "@prisma/client/runtime/client";
 import { UploadSaga } from "./upload-saga";
+import { Readable } from "stream";
+import plimit from 'p-limit';
 
 interface ISite { [key: string]: { port: number; dir: string; } }
 interface IUploadRes { remotePath: string; file: FileInfo; }
@@ -96,14 +98,16 @@ export class RepositoryMedia implements IRepositoryMedia {
         const ftpLibrary = new FtpLibrary(Number(site))
         try {
             await ftpLibrary.connect()
-            const promise = files.map(async (file) => {
-                const buffer = await file.arrayBuffer()
+            const limitFtp = plimit(10)
+            const promise = files.map(async (file) => limitFtp(async () => {
+                const buffer = Readable.fromWeb(file.stream() as any)
                 const res = await ftpLibrary.uploadFile(workingDir, { buffer, fileName: file.name })
                 return { res, file }
-            })
+            }))
 
             const filesUpload = await Promise.all(promise)
-            const mapFile = filesUpload.map(async (e) => {
+            const limitDb = plimit(3)
+            const mapFile = filesUpload.map(async (e) => limitDb(async () => {
                 /* create new-file(s) */
                 const fileBody: FileNewDto = {
                     folderId: folder.id,
@@ -114,7 +118,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                 }
 
                 return await this.fileRepo.newFile(c, fileBody)
-            })
+            }))
 
             const res = await Promise.all(mapFile)
             const payload = res.map(e => e.payload).filter(notEmpty)
@@ -200,42 +204,44 @@ export class RepositoryMedia implements IRepositoryMedia {
         const ftpLibrary = new FtpLibrary(siteId)
 
         try {
+            const limit = plimit(5)
             const results = await Promise.all(
-                items.map(async ({ file, segments, fileName, ftpPath }) => {
+                items.map(async ({ file, segments, fileName, ftpPath }) =>
+                    limit(async () => {
+                        // 1. Create fresh DB folder chain → get the leaf folderId
+                        const leafFolderId = segments.length > 0
+                            ? await this.folderRepo.createFolderChain(segments, rootParentId, account.id, source, saga)
+                            : rootParentId ?? (() => {
+                                throw new HttpException({
+                                    errCode: 'NO_ROOT_FOLDER',
+                                    statusCode: StatusCodes.BAD_REQUEST,
+                                    messages: ['A folderId is required when files have no subfolder path'],
+                                })
+                            })()
 
-                    // 1. Create fresh DB folder chain → get the leaf folderId
-                    const leafFolderId = segments.length > 0
-                        ? await this.folderRepo.createFolderChain(segments, rootParentId, account.id, source, saga)
-                        : rootParentId ?? (() => {
-                            throw new HttpException({
-                                errCode: 'NO_ROOT_FOLDER',
-                                statusCode: StatusCodes.BAD_REQUEST,
-                                messages: ['A folderId is required when files have no subfolder path'],
-                            })
-                        })()
+                        // 2. Upload file over FTP
+                        const buffer = Readable.fromWeb(file.stream() as any)
+                        await ftpLibrary.ensureDir(ftpPath)
+                        const ftpRes = await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
+                        saga.track({ type: 'ftp', path: ftpPath, siteId })
 
-                    // 2. Upload file over FTP
-                    const buffer = await file.arrayBuffer()
-                    await ftpLibrary.ensureDir(ftpPath)
-                    const ftpRes = await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
-                    saga.track({ type: 'ftp', path: ftpPath, siteId })
+                        // 3. Insert File record — always a new row
+                        const fileRecord = await prismaProxy.file.create({
+                            data: {
+                                fileName,
+                                folderId: leafFolderId,
+                                accountId: account.id,
+                                fileSize: file.size,
+                                fileType: file.type || 'application/octet-stream',
+                                source: source as any,
+                                recordStatus: 'ACTIVE',
+                            },
+                        })
 
-                    // 3. Insert File record — always a new row
-                    const fileRecord = await prismaProxy.file.create({
-                        data: {
-                            fileName,
-                            folderId: leafFolderId,
-                            accountId: account.id,
-                            fileSize: file.size,
-                            fileType: file.type || 'application/octet-stream',
-                            source: source as any,
-                            recordStatus: 'ACTIVE',
-                        },
+                        saga.track({ type: 'file', id: fileRecord.id })
+                        return { ftpRes, fileRecord }
                     })
-
-                    saga.track({ type: 'file', id: fileRecord.id })
-                    return { ftpRes, fileRecord }
-                })
+                )
             )
 
             return { statusCode: 200, messages: [], payload: results }

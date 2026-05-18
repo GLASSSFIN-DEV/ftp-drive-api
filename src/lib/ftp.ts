@@ -14,7 +14,7 @@ export type FtpEntry = {
 }
 interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
-    uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string }): Promise<{
+    uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string }): Promise<{
         file: FileInfo;
         workingDir: string;
     }>;
@@ -95,19 +95,18 @@ export class FtpLibrary implements IFtpLibrary {
      * @param obj 
      * @returns 
      */
-    async uploadFile(remotePath: string, obj: { buffer: ArrayBuffer; fileName: string; }): Promise<{
+    async uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string; }): Promise<{
         file: FileInfo;
         workingDir: string;
     }> {
         await this.client.pwd()
         await this.client.ensureDir(remotePath)
 
-        const readable = this.arrayBufferToStream(obj.buffer)
         this.client.trackProgress(info => {
             logger.http('[ftp]', { ...info })
         })
 
-        await this.client.uploadFrom(readable, obj.fileName)
+        await this.client.uploadFrom(obj.buffer, obj.fileName)
         const workingDir = await this.client.pwd()
         const file = await this.findFile(workingDir, obj.fileName)
 

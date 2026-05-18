@@ -5,6 +5,7 @@ import { FtpLibrary } from '@/lib/ftp'
 import { prismaProxy } from '@/lib/prisma'
 import { ISource, RepositoryFolder } from '@/modules/folder/folder.svc'
 import { homePath } from '@/middleware/auth.validator'
+import plimit from 'p-limit'
 
 export const reconcileOrphanedFiles = inngest.createFunction(
     {
@@ -89,10 +90,11 @@ export const reconcileOrphanedFiles = inngest.createFunction(
                     }
 
                     /* ── also list FTP root and find files with no DB record ── */
-                    const realPathPromise = files.map(async (file) => {
+                    const limit = plimit(5)
+                    const realPathPromise = files.map(async (file) => limit(async () => {
                         const folderPath = await folderRepo.realPath(file.folderId)
                         return `${folderPath}/${file.fileName}`.replace(/\/+/g, '/')  // ← append fileName
-                    })
+                    }))
 
                     const realPaths = await Promise.allSettled(realPathPromise)
                     const ftpFiles = (await ftp.listAllFiles()).map(e => e.path)   // returns string[] of full paths
@@ -101,7 +103,7 @@ export const reconcileOrphanedFiles = inngest.createFunction(
                             .filter((e): e is PromiseFulfilledResult<string> => e.status === 'fulfilled')  // ← type guard
                             .map(e => e.value)   // ← extract the actual string value
                     )
-                    
+
                     for (const ftpPath of ftpFiles) {
                         if (!dbPaths.has(ftpPath)) {
                             logger.warn(`FTP file at ${ftpPath} has no DB record`)
