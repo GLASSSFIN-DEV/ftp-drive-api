@@ -75,7 +75,7 @@ export class RepositoryMedia implements IRepositoryMedia {
         })
 
         /* validate the folderId */
-        const folderId = c.req.param('folderId')
+        const folderId = c.req.param('id')
         const folder = await prismaProxy.folder.findFirst({
             where: { id: folderId },
             select: { id: true, source: true }

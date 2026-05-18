@@ -10,25 +10,34 @@ import {
 import logger from '@/lib/logger'
 import { HttpException } from '@/common/http-exception'
 
-export default class RequestValidator {
-  static validate = <T>(
-    classInstance: ClassConstructor<T>
+export default class Validate {
+  static for = <T>(
+    classInstance: ClassConstructor<T>,
+    entity: 'body' | 'param' | 'query' = 'body'
   ) => {
     return createMiddleware(async (c, next) => {
       const validationErrorText = 'Request entity not valid'
 
       try {
-        const body = await c.req.json()
-        const convertedObject = plainToInstance(classInstance, body)
+        const body = entity === 'param' 
+          ? c.req.param() : entity === 'query' 
+          ? c.req.queries() : await c.req.json()
+
+        const convertedObject = plainToInstance(classInstance, body, { 
+          enableImplicitConversion: true,
+          exposeDefaultValues: true,
+        })
+
         const errors = await validate(
           convertedObject as Record<string, unknown>,
           {
             whitelist: true,
             forbidNonWhitelisted: true,
+            enableDebugMessages: true,
           } as ValidatorOptions
         )
 
-        logger.http(`[body]`, { body, convertedObject, errors })
+        logger.http(`[${entity}]`, { body, convertedObject, errors })
         if (!errors.length) {
           c.set('validatedBody', convertedObject)
 

@@ -27,9 +27,3 @@ export class MediaStreamDto {
     @IsPositive()
     site!: number;
 }
-
-export class UploadParam {
-    @IsUUID()
-    @IsNotEmpty()
-    folderId!: string;
-}

@@ -14,7 +14,7 @@ export function homePath(value: string) {
     .replace(/[^a-zA-Z0-9]/g, "_")
 }
 
-export default class AuthConsent {
+export default class Guard {
   static validate = () => {
     return createMiddleware(async (c, next) => {
       try {
@@ -80,12 +80,12 @@ export default class AuthConsent {
         }
 
         throw new HttpException({
-          errCode: 'AUTH_CONSENT_ERROR',
+          errCode: 'GUARD_ERROR',
           statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
           messages: [
             e instanceof Error
               ? e.message
-              : 'Auth consent error!',
+              : 'Guard error!',
           ],
         })
       }

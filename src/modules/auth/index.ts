@@ -1,28 +1,28 @@
 import { Hono } from 'hono'
 import { Auth } from '@/modules/auth/auth.svc'
-import AuthConsent from '@/middleware/auth.validator'
+import Guard from '@/middleware/auth.validator'
 import { RepositoryGOAuth } from '@/modules/auth/google.svc'
 
 const router = new Hono()
 const authService = new Auth()
 const oautService = new RepositoryGOAuth()
 
-router.get('/auth/users', AuthConsent.validate(), async (c) => {
+router.get('/auth/users', Guard.validate(), async (c) => {
     const value = await authService.users(c)
     return c.json(value)
 })
 
-router.get('/auth/me', AuthConsent.validate(), async (c) => {
+router.get('/auth/me', Guard.validate(), async (c) => {
     const account = c.get('account')
     return c.json(account)
 })
 
-router.get('/auth/logout', AuthConsent.validate(), async (c) => {
+router.get('/auth/logout', Guard.validate(), async (c) => {
     const value = await authService.logout(c)
     return c.json(value)
 })
 
-router.get('/auth/refresh', AuthConsent.validate(), async (c) => {
+router.get('/auth/refresh', Guard.validate(), async (c) => {
     const value = await authService.refresh(c)
     return c.json(value)
 })

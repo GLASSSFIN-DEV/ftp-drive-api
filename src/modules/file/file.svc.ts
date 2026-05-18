@@ -104,7 +104,7 @@ export class RepositoryFile implements IRepositoryFile {
                 })
             })
 
-            const file = await ftp.getInfo(workingDir, obj.fileName)
+            const file = await ftp.findFile(workingDir, obj.fileName)
             return {
                 statusCode: StatusCodes.CREATED,
                 messages: ['File uploaded'],
@@ -182,7 +182,7 @@ export class RepositoryFile implements IRepositoryFile {
                 })
             })
 
-            const file = await ftp.getInfo(newWorkDir, obj.fileName)
+            const file = await ftp.findFile(newWorkDir, obj.fileName)
             await ftp.rename(
                 (lastWorkDir + '/' + obj.fileName).replace(/\/+/g, '/'),
                 (newWorkDir + '/' + obj.fileName).replace(/\/+/g, '/')
@@ -383,7 +383,7 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async myFiles(c: Context): Promise<Object[]> {
         const account = c.get('account')
-        const folderId = c.req.param('folderId')
+        const folderId = c.req.param('id')
         const { keyword, startDate, endDate } = c.req.query()
         const where: FileWhereInput = {
             folderId, accountId: account.id,

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator";
 
 export class FolderNewDto {
     @IsString()
@@ -26,9 +26,4 @@ export class FolderChangeDto {
     @IsNumber()
     @IsPositive()
     siteId!: number;
-}
-
-export class FolderIdDto {
-    @IsUUID()
-    id!: string;
 }
