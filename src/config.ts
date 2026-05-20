@@ -1,4 +1,7 @@
+import { configDotenv } from "dotenv";
 import { bool, cleanEnv, json, makeValidator, num, str } from "envalid";
+
+configDotenv({ quiet: true })
 
 export enum Environments {
     PRODUCTION = 'production',
