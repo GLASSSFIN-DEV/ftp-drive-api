@@ -5,6 +5,7 @@ import { getContext } from 'hono/context-storage';
 import fastRedact from 'fast-redact';
 import { env } from 'process';
 import { prisma } from './prisma.js';
+import { Logs } from '../config.js';
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined;
@@ -98,7 +99,7 @@ try {
     format: logFormat,
     transports: [
       new PrismaTransport(), 
-      // env.LOG === Logs.VERBOSE ? new transports.Console() : null 
+      env.LOG === Logs.VERBOSE ? new transports.Console() : null 
     ].filter(notEmpty),
   });
 } catch (err) {

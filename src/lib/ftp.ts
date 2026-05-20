@@ -12,7 +12,6 @@ export type FtpEntry = {
     size:        number
     name:        string
 }
-interface IFtpConfig { secure: boolean | 'implicit' }
 export interface IFtpLibrary {
     uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string }): Promise<{
         file: FileInfo;
@@ -48,13 +47,15 @@ export class FtpLibrary implements IFtpLibrary {
     }
 
     async connect() {
-        const config: IFtpConfig = env.FTP_CONFIG
         const opts: AccessOptions = {
             host: env.FTP_HOST,
             port: this.port,
             user: env.FTP_USERNAME,
             password: env.FTP_PASSWORD,
-            secure: config.secure,
+            secure: env.FTP_CONFIG as (boolean | 'implicit' | undefined),
+            secureOptions: {
+                rejectUnauthorized: env.NODE_REJECT_UNAUTHORIZE
+            }
         }
 
         try {

@@ -3,10 +3,35 @@ import {
   validationMetadatasToSchemas,
 } from 'class-validator-jsonschema'
 import { env } from "../config.js";
+import { DebugFolderExistDto, SiteId } from "../dto/debug.dto.js";
+import { FileSharingNewDto } from "../dto/file-share.dto.js";
+import { FolderChangeDto, FolderNewDto } from "../dto/folder.dto.js";
+import { FileChangeDto, FileNewDto } from "../dto/file.dto.js";
+import { FolderSharingNewDto } from "../dto/folder-share.dto.js";
+import { MediaDropDto, MediaStreamDto } from "../dto/media.dto.js";
+import { PageQueryDto, UuidDto } from "../dto/query.dto.js";
+import { RbacNewDto } from "../dto/rbac.dto.js";
+import { UserChangeDto, UserNewDto } from "../dto/user.dto.js";
 
 const schemas = validationMetadatasToSchemas({
   classValidatorMetadataStorage: getMetadataStorage(),
 })
+
+new DebugFolderExistDto()
+new SiteId()
+new FolderNewDto()
+new FolderChangeDto()
+new FileNewDto()
+new FileChangeDto()
+new FileSharingNewDto()
+new FolderSharingNewDto()
+new MediaDropDto()
+new MediaStreamDto()
+new PageQueryDto()
+new UuidDto()
+new RbacNewDto()
+new UserNewDto()
+new UserChangeDto()
 
 export const definition = {
   openapi: '3.0.0',
