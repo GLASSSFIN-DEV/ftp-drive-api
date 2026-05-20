@@ -48,6 +48,7 @@ export interface IRepositoryFile {
     changeFile(c: Context): Promise<IOkResponse>;
     removeFile(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
+    version(c: Context): Promise<{}[]>;
     get(c: Context): Promise<Object | null>;
     myFiles(c: Context): Promise<Object[]>;
 }
@@ -162,6 +163,9 @@ export class RepositoryFile implements IRepositoryFile {
             }
 
             const fileHash = await ftp.send(newWorkDir, obj.fileName, 'XMD5')
+            const lastVersion = await prismaProxy.fileHistory.findFirst({ where: { id: exist.id } })
+            const version = lastVersion?.version ? lastVersion.version + 1 : 0
+
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
                     ftpHost: env.FTP_HOST,
@@ -179,6 +183,16 @@ export class RepositoryFile implements IRepositoryFile {
                         source: source as unknown as InputJsonObject,
                     },
                     where: { id, accountId: account.id }
+                })
+
+                await tx.fileHistory.create({
+                    data: {
+                        accountId: account.id,
+                        fileId: exist.id,
+                        json: obj as unknown as InputJsonObject,
+                        version,
+                        createdAt: new Date(),
+                    }
                 })
             })
 
@@ -223,6 +237,7 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         await prismaProxy.$transaction(async (tx) => {
+            await tx.fileHistory.deleteMany({ where: { fileId: id, accountId: account.id } })
             await tx.fileSharing.deleteMany({ where: { fileId: id, accountId: account.id } })
             await tx.file.delete({ where: { id, accountId: account.id } })
         })
@@ -443,5 +458,13 @@ export class RepositoryFile implements IRepositoryFile {
         })
 
         return items
+    }
+
+    /**
+     * 
+     * @param c 
+     */
+    async version(c: Context): Promise<{}[]> {
+        throw new Error("Method not implemented.");
     }
 }

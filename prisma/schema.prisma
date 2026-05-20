@@ -65,6 +65,7 @@ model Account {
   folderSharingToAccounts FolderSharing[] @relation("folderSharingToAccounts")
   fileSharingAccounts     FileSharing[]   @relation("fileSharingAccounts")
   fileSharingToAccounts   FileSharing[]   @relation("fileSharingToAccounts")
+  fileHistories           FileHistory[]
 
   @@index([dirId])
   @@index([rbacId])
@@ -169,9 +170,10 @@ model File {
   accountId    String
   recordStatus RecordStatus @default(NOT_ACTIVE)
 
-  account      Account       @relation("fileAccounts", fields: [accountId], references: [id])
-  folder       Folder        @relation(fields: [folderId], references: [id])
-  fileSharings FileSharing[]
+  account       Account       @relation("fileAccounts", fields: [accountId], references: [id])
+  folder        Folder        @relation(fields: [folderId], references: [id])
+  fileSharings  FileSharing[]
+  fileHistories FileHistory[]
 
   @@index([folderId])
   @@index([accountId])
@@ -182,6 +184,21 @@ model File {
   @@index([fileName])
   @@index([folderId, fileName])
   @@index([accountId, folderId])
+  @@schema("drive")
+}
+
+model FileHistory {
+  id        String   @id @default(uuid())
+  fileId    String
+  json      Json
+  version   Int
+  accountId String
+  createdAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+  file    File    @relation(fields: [fileId], references: [id])
+
+  @@index([fileId, accountId])
   @@schema("drive")
 }
 
