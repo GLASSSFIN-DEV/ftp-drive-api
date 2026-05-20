@@ -1,10 +1,11 @@
 import { Hono } from 'hono'
-import { FtpLibrary } from '@/lib/ftp'
-import { env, Environments } from '@/config'
-import { DebugFolderExistDto } from '@/dto/debug.dto'
-import Validate from '@/middleware/req.validator'
-import { checkOrphans } from '@/jobs/check-orphans'
-import { prismaProxy } from '@/lib/prisma'
+import Validate from '../../middleware/req.validator.js'
+import { env } from 'process'
+import { Environments } from '../../config.js'
+import { DebugFolderExistDto } from '../../dto/debug.dto.js'
+import { checkOrphans } from '../../jobs/check-orphans.js'
+import { FtpLibrary } from '../../lib/ftp.js'
+import { prismaProxy } from '../../lib/prisma.js'
 
 const router = new Hono()
 

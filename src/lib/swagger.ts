@@ -1,8 +1,8 @@
 import { getMetadataStorage } from "class-validator";
-import { env } from '@/config';
 import {
   validationMetadatasToSchemas,
 } from 'class-validator-jsonschema'
+import { env } from "../config.js";
 
 const schemas = validationMetadatasToSchemas({
   classValidatorMetadataStorage: getMetadataStorage(),

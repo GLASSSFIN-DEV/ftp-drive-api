@@ -1,6 +1,6 @@
-import { FtpLibrary } from "@/lib/ftp";
-import { inngest } from "@/lib/inngest-client";
-import { prismaProxy } from "@/lib/prisma";
+import { FtpLibrary } from "../../lib/ftp.js";
+import { inngest } from "../../lib/inngest-client.js";
+import { prismaProxy } from "../../lib/prisma.js";
 
 type CompletedStep =
     | { type: 'folder'; id: string }

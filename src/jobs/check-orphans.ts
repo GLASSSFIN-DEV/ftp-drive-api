@@ -1,7 +1,7 @@
-import { FtpLibrary } from '@/lib/ftp'
-import { prismaProxy } from '@/lib/prisma'
-import { RepositoryFolder, ISource } from '@/modules/folder/folder.svc'
-import { homePath } from '@/middleware/auth.validator'
+import { FtpLibrary } from "../lib/ftp.js";
+import { prismaProxy } from "../lib/prisma.js";
+import { homePath } from "../middleware/auth.validator.js";
+import { RepositoryFolder, ISource } from "../modules/folder/folder.svc.js";
 
 export interface OrphanCheckResult {
     dbFoldersMissingOnFtp: { id: string; folderName: string; path: string }[]

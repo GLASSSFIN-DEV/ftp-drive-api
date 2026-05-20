@@ -1,9 +1,9 @@
 
 import { PrismaPg } from '@prisma/adapter-pg';
-import { env, Environments } from '@/config'
-import { Prisma, PrismaClient } from '@/generated/prisma/client';
-import logger from './logger';
 import { getContext } from 'hono/context-storage';
+import { env, Environments } from '../config.js';
+import { Prisma, PrismaClient } from '../generated/prisma/client.js';
+import logger from './logger.js';
 
 const connectionString = env.DATABASE_URL
 const adapter = new PrismaPg({ connectionString })

@@ -1,10 +1,10 @@
 
-import { HttpException } from '@/common/http-exception'
-import { env } from '@/config'
 import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
 import { PassThrough, Readable } from 'stream'
 import { StatusCodes } from 'http-status-codes'
-import logger from '@/lib/logger'
+import logger from './logger.js'
+import { env } from '../config.js'
+import { HttpException } from '../common/http-exception.js'
 
 export type FtpEntry = {
     path:        string       // full remote path
@@ -19,7 +19,7 @@ export interface IFtpLibrary {
         workingDir: string;
     }>;
     streamFile(remotePath: string, fileName: string): Promise<{
-        stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
+        stream: ReadableStream<Uint8Array>;
         size: number;
     }>;
     findFile(remotePath: string, name: string): Promise<FileInfo>;
@@ -121,7 +121,7 @@ export class FtpLibrary implements IFtpLibrary {
      * @param fileName 
      */
     async streamFile(remotePath: string, fileName: string): Promise<{
-        stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
+        stream: ReadableStream<Uint8Array>;
         size: number;
     }> {
         await this.client.pwd()

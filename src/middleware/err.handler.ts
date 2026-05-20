@@ -1,9 +1,9 @@
 import type { Context } from 'hono'
-import { HttpException } from '@/common/http-exception.js'
-import logger from '@/lib/logger'
-import { IFailResponse } from '@/types/common'
 import { ContentfulStatusCode } from 'hono/utils/http-status'
 import { getContext } from 'hono/context-storage'
+import { HttpException } from '../common/http-exception.js'
+import logger from '../lib/logger.js'
+import { IFailResponse } from '../types/common.js'
 
 export function errorHandler() {
   return async (err: Error, c: Context) => {

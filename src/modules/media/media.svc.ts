@@ -1,21 +1,22 @@
-import { HttpException } from "@/common/http-exception";
-import { FtpLibrary } from "@/lib/ftp";
-import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
-import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
-import { prismaProxy } from "@/lib/prisma";
-import { IRepositoryFile, RepositoryFile } from "../file/file.svc";
-import { FileNewDto } from "@/dto/file.dto";
-import { notEmpty } from "@/lib/logger";
 import { FileInfo } from "basic-ftp";
-import { MediaStreamDto } from "@/dto/media.dto";
 import { lookup } from "mime-types";
-import { Prisma, RecordStatus } from '@/generated/prisma/client'
 import { JsonValue } from "@prisma/client/runtime/client";
-import { UploadSaga } from "./upload-saga";
 import { Readable } from "stream";
 import plimit from 'p-limit';
+import { Prisma } from "../../generated/prisma/client.js";
+import { HttpException } from "../../common/http-exception.js";
+import { FileNewDto } from "../../dto/file.dto.js";
+import { MediaStreamDto } from "../../dto/media.dto.js";
+import { RecordStatus } from "../../generated/prisma/enums.js";
+import { FtpLibrary } from "../../lib/ftp.js";
+import { notEmpty } from "../../lib/logger.js";
+import { prismaProxy } from "../../lib/prisma.js";
+import { IOkResponse } from "../../types/common.js";
+import { IRepositoryFile, RepositoryFile } from "../file/file.svc.js";
+import { IRepositoryFolder, RepositoryFolder, ISource } from "../folder/folder.svc.js";
+import { UploadSaga } from "./upload-saga.js";
 
 interface ISite { [key: string]: { port: number; dir: string; } }
 interface IUploadRes { remotePath: string; file: FileInfo; }

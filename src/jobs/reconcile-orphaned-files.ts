@@ -1,11 +1,11 @@
 // src/jobs/reconcile-orphaned-files.ts
 
-import { inngest } from '@/lib/inngest-client'
-import { FtpLibrary } from '@/lib/ftp'
-import { prismaProxy } from '@/lib/prisma'
-import { ISource, RepositoryFolder } from '@/modules/folder/folder.svc'
-import { homePath } from '@/middleware/auth.validator'
 import plimit from 'p-limit'
+import { FtpLibrary } from '../lib/ftp.js'
+import { inngest } from '../lib/inngest-client.js'
+import { prismaProxy } from '../lib/prisma.js'
+import { homePath } from '../middleware/auth.validator.js'
+import { RepositoryFolder, ISource } from '../modules/folder/folder.svc.js'
 
 export const reconcileOrphanedFiles = inngest.createFunction(
     {

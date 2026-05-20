@@ -1,12 +1,12 @@
 import { createMiddleware } from 'hono/factory'
-import logger from '@/lib/logger.js'
-import { HttpException } from '@/common/http-exception.js'
-import { IAccount } from '@/types/hono'
 import { StatusCodes } from 'http-status-codes'
 import { verify } from 'hono/jwt'
-import { env } from '@/config'
-import { prismaProxy } from '@/lib/prisma'
 import { JWTPayload } from 'hono/utils/jwt/types'
+import { HttpException } from '../common/http-exception.js'
+import { prismaProxy } from '../lib/prisma.js'
+import { IAccount } from '../types/hono.js'
+import { env } from '../config.js'
+import logger from '../lib/logger.js'
 
 export function homePath(value: string) {
   return (value || "")

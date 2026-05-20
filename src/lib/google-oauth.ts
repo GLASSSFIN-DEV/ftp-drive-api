@@ -1,12 +1,8 @@
-import { google } from '@/config';
-import {
-    GoogleTokenInfo,
-    GoogleTokenResponse,
-    GoogleUserInfo
-} from '@/types/google'
-import { HttpException } from "@/common/http-exception";
 import { StatusCodes } from "http-status-codes";
-import logger from "./logger";
+import { HttpException } from "../common/http-exception.js";
+import { google } from "../config.js";
+import { GoogleTokenResponse, GoogleTokenInfo, GoogleUserInfo } from "../types/google.js";
+import logger from "./logger.js";
 
 export interface IGoogleOAuth {
     buildUrl(state: string): string;

@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
-import { RepositoryFile } from '@/modules/file/file.svc'
-import { FileChangeDto } from '@/dto/file.dto'
-import Guard from '@/middleware/auth.validator'
-import Validate from '@/middleware/req.validator'
-import { PageQueryDto, UuidDto } from '@/dto/query.dto'
+import { FileChangeDto } from '../../dto/file.dto.js'
+import { UuidDto, PageQueryDto } from '../../dto/query.dto.js'
+import Guard from '../../middleware/auth.validator.js'
+import Validate from '../../middleware/req.validator.js'
+import { RepositoryFile } from './file.svc.js'
 
 const router = new Hono()
 const fileService = new RepositoryFile()

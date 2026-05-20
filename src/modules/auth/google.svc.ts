@@ -1,15 +1,15 @@
-import { HttpException } from "@/common/http-exception";
-import { GoogleOAuth, IGoogleOAuth } from "@/lib/google-oauth";
-import { prismaProxy } from "@/lib/prisma";
-import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { sign } from 'hono/jwt';
+import logger from "../../lib/logger.js";
 import { JWTPayload } from "hono/utils/jwt/types";
 import { StatusCodes } from "http-status-codes";
-import { env } from "@/config";
+import { env } from "../../config.js";
 import { v7 } from 'uuid';
-import { ResObj } from "./auth.svc";
-import logger from "@/lib/logger";
+import { HttpException } from "../../common/http-exception.js";
+import { IGoogleOAuth, GoogleOAuth } from "../../lib/google-oauth.js";
+import { prismaProxy } from "../../lib/prisma.js";
+import { IOkResponse } from "../../types/common.js";
+import { ResObj } from "./auth.svc.js";
 
 export interface IRepositoryGOAuth {
     handshake(c: Context): Promise<IOkResponse<string>>;

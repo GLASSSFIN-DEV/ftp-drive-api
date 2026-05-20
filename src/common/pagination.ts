@@ -1,4 +1,4 @@
-import { IPagination } from "@/types/common";
+import { IPagination } from "../types/common.js";
 
 const createPagination = (
   page: number = 1,

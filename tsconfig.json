@@ -1,21 +1,15 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "preserve",
-    "moduleResolution": "bundler",
+    "module": "nodenext",
     "strict": true,
     "skipLibCheck": true,
     "types": ["node"],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
-    "rootDir": "./src",
     "outDir": "./dist",
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "emitDecoratorMetadata": true
   },
-  "exclude": ["node_modules"],
-  "include": ["src"]
+  "exclude": ["node_modules"]
 }

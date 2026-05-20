@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { getContext } from "hono/context-storage";
 import { MiddlewareHandler } from "hono/types";
+import { prisma } from "../lib/prisma.js";
 
 export function useTelemetry(): MiddlewareHandler {
   return async (c, next) => {

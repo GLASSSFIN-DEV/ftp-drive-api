@@ -6,9 +6,8 @@ import {
   type ValidatorOptions,
   validate,
 } from 'class-validator'
-
-import logger from '@/lib/logger'
-import { HttpException } from '@/common/http-exception'
+import logger from '../lib/logger.js'
+import { HttpException } from '../common/http-exception.js'
 
 const validatorOpts: ValidatorOptions = {
   whitelist: true,

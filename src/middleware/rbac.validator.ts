@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory'
-import logger from '@/lib/logger.js'
-import { HttpException } from '@/common/http-exception.js'
-import { IAccount } from '@/types/hono'
+import { HttpException } from '../common/http-exception.js'
+import { IAccount } from '../types/hono.js'
+import logger from '../lib/logger.js'
 
 export default class PrivilegeValidator {
   static validate = (roles: string[]) => {
@@ -9,6 +9,16 @@ export default class PrivilegeValidator {
       try {
         const account = c.get('account') as IAccount
         if (!account.rbac) {
+          throw new HttpException({
+            errCode: 'ROLE_NOT_FOUND',
+            statusCode: 403,
+            messages: [
+              'No role was assigned to your account',
+            ],
+          })
+        }
+
+        if (!account.rbacName) {
           throw new HttpException({
             errCode: 'ROLE_NOT_FOUND',
             statusCode: 403,

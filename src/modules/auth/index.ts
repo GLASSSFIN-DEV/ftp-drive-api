@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import { Auth } from '@/modules/auth/auth.svc'
-import Guard from '@/middleware/auth.validator'
-import { RepositoryGOAuth } from '@/modules/auth/google.svc'
+import Guard from '../../middleware/auth.validator.js'
+import { Auth } from './auth.svc.js'
+import { RepositoryGOAuth } from './google.svc.js'
 
 const router = new Hono()
 const authService = new Auth()

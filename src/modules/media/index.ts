@@ -1,10 +1,10 @@
 
 import { Hono } from 'hono'
-import { MediaStreamDto } from '@/dto/media.dto'
-import Guard from '@/middleware/auth.validator'
-import { RepositoryMedia } from './media.svc'
-import Validate from '@/middleware/req.validator'
-import { UuidDto } from '@/dto/query.dto'
+import { MediaStreamDto } from '../../dto/media.dto.js'
+import { UuidDto } from '../../dto/query.dto.js'
+import Guard from '../../middleware/auth.validator.js'
+import Validate from '../../middleware/req.validator.js'
+import { RepositoryMedia } from './media.svc.js'
 
 const router = new Hono()
 const mediaRepo = new RepositoryMedia()

@@ -1,10 +1,10 @@
 import { createLogger, format, transports, type Logger } from 'winston';
-import { env, Logs } from '@/config';
 import { v7 } from 'uuid';
 import Transport from 'winston-transport';
 import { getContext } from 'hono/context-storage';
 import fastRedact from 'fast-redact';
-import { prisma } from './prisma';
+import { env } from 'process';
+import { prisma } from './prisma.js';
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined;

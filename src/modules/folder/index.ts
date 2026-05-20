@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
-import { RepositoryFolder } from '@/modules/folder/folder.svc'
-import Guard from '@/middleware/auth.validator'
-import { FolderChangeDto, FolderNewDto } from '@/dto/folder.dto'
-import Validate from '@/middleware/req.validator'
-import { PageQueryDto, UuidDto } from '@/dto/query.dto'
+import { FolderNewDto, FolderChangeDto } from '../../dto/folder.dto.js'
+import { UuidDto, PageQueryDto } from '../../dto/query.dto.js'
+import Guard from '../../middleware/auth.validator.js'
+import Validate from '../../middleware/req.validator.js'
+import { RepositoryFolder } from './folder.svc.js'
 
 const router = new Hono()
 const folderService = new RepositoryFolder()

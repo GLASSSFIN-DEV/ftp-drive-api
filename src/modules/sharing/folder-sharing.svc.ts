@@ -1,13 +1,13 @@
-import { HttpException } from "@/common/http-exception";
-import { FolderSharingNewDto } from "@/dto/folder-share.dto";
-import { SharePermission } from "@/generated/prisma/enums";
-import { IFtpLibrary, FtpLibrary } from "@/lib/ftp";
-import { prismaProxy } from "@/lib/prisma";
-import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { v7 } from 'uuid';
-import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
+import { SharePermission } from "../../generated/prisma/enums.js";
+import { HttpException } from "../../common/http-exception.js";
+import { FolderSharingNewDto } from "../../dto/folder-share.dto.js";
+import { FtpLibrary } from "../../lib/ftp.js";
+import { prismaProxy } from "../../lib/prisma.js";
+import { IOkResponse } from "../../types/common.js";
+import { IRepositoryFolder, RepositoryFolder, ISource } from "../folder/folder.svc.js";
 
 interface IFolderSharingObj {
     account: {
@@ -49,7 +49,7 @@ export class RepositoryFolderSharing implements IRepositoryFolderSharing {
 
         const findFolder = await prismaProxy.folder.findFirst({ where: { id: body.folderId, accountId: account.id } })
         const findAccount = await prismaProxy.account.findFirst({ where: { id: body.toAccountId } })
-        const exist = await prismaProxy.folderSharing.findFirst({ where: { fileId: body.folderId, toAccountId: body.toAccountId } })
+        const exist = await prismaProxy.folderSharing.findFirst({ where: { folderId: body.folderId, toAccountId: body.toAccountId } })
 
         if (exist && exist.permission === body.permission) throw new HttpException({
             errCode: 'SHARE_NOT_IMPLEMENTED',

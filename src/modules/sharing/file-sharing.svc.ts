@@ -1,13 +1,13 @@
-import { HttpException } from "@/common/http-exception";
-import { FileSharingNewDto } from "@/dto/file-share.dto";
-import { SharePermission } from "@/generated/prisma/enums";
-import { FtpLibrary } from "@/lib/ftp";
-import { prismaProxy } from "@/lib/prisma";
-import { IOkResponse } from "@/types/common";
 import { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { v7 } from 'uuid';
-import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
+import { SharePermission } from "../../generated/prisma/enums.js";
+import { HttpException } from "../../common/http-exception.js";
+import { FileSharingNewDto } from "../../dto/file-share.dto.js";
+import { FtpLibrary } from "../../lib/ftp.js";
+import { prismaProxy } from "../../lib/prisma.js";
+import { IOkResponse } from "../../types/common.js";
+import { IRepositoryFolder, RepositoryFolder, ISource } from "../folder/folder.svc.js";
 
 interface IFileSharingObj {
     account: {

@@ -1,5 +1,4 @@
-
-import { HttpException } from '@/common/http-exception'
+import { HttpException } from "./http-exception.js"
 
 export const throwError = <T>(params: {
   errCode: string

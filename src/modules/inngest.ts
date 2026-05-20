@@ -1,8 +1,8 @@
 // src/routes/inngest.ts
 import { Hono }                   from 'hono'
 import { serve }                  from 'inngest/hono'
-import { inngest }                from '@/lib/inngest-client'
-import { reconcileOrphanedFiles } from '@/jobs/reconcile-orphaned-files'
+import { inngest } from '../lib/inngest-client.js'
+import { reconcileOrphanedFiles } from '../jobs/reconcile-orphaned-files.js'
 
 const inngestRoute = new Hono()
 

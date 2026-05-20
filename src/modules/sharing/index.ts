@@ -1,11 +1,11 @@
-import Validate from '@/middleware/req.validator'
 import { Hono } from 'hono'
-import { RepositoryFileSharing } from '@/modules/sharing/file-sharing.svc'
-import { FileSharingNewDto } from '@/dto/file-share.dto'
-import { RepositoryFolderSharing } from '@/modules/sharing/folder-sharing.svc'
-import { FolderSharingNewDto } from '@/dto/folder-share.dto'
-import Guard from '@/middleware/auth.validator'
-import { UuidDto } from '@/dto/query.dto'
+import { FileSharingNewDto } from '../../dto/file-share.dto.js'
+import { FolderSharingNewDto } from '../../dto/folder-share.dto.js'
+import { UuidDto } from '../../dto/query.dto.js'
+import Guard from '../../middleware/auth.validator.js'
+import Validate from '../../middleware/req.validator.js'
+import { RepositoryFileSharing } from './file-sharing.svc.js'
+import { RepositoryFolderSharing } from './folder-sharing.svc.js'
 
 const router = new Hono()
 const fileSharing = new RepositoryFileSharing()

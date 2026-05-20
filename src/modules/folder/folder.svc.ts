@@ -1,17 +1,17 @@
-import { HttpException } from "@/common/http-exception";
-import { FolderChangeDto, FolderNewDto } from "@/dto/folder.dto";
-import { FtpLibrary } from "@/lib/ftp";
-import { prismaProxy } from "@/lib/prisma";
-import { IItemPagination, IOkResponse } from "@/types/common";
 import { InputJsonObject, JsonValue } from "@prisma/client/runtime/client";
 import { Context } from "hono";
-import { env } from '@/config';
-import { Folder } from "@/generated/prisma/client";
 import { StatusCodes } from "http-status-codes";
-import createPagination, { createOrderBy } from "@/common/pagination";
-import { FolderWhereInput } from "@/generated/prisma/models";
 import { FTPResponse } from "basic-ftp";
-import { UploadSaga } from "../media/upload-saga";
+import { env } from "../../config.js";
+import { HttpException } from "../../common/http-exception.js";
+import createPagination, { createOrderBy } from "../../common/pagination.js";
+import { FolderNewDto, FolderChangeDto } from "../../dto/folder.dto.js";
+import { Folder } from "../../generated/prisma/client.js";
+import { FolderWhereInput } from "../../generated/prisma/models.js";
+import { FtpLibrary } from "../../lib/ftp.js";
+import { prismaProxy } from "../../lib/prisma.js";
+import { IOkResponse, IItemPagination } from "../../types/common.js";
+import { UploadSaga } from "../media/upload-saga.js";
 
 interface IFolderObj {
     action?: {
@@ -39,7 +39,7 @@ interface IFolderObj {
             folders: number;
         };
     }[];
-    fileSharings: {
+    folderSharings: {
         account: {
             username: string;
             fullname: string | null;
@@ -391,7 +391,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                         folderName: true,
                     }
                 },
-                fileSharings: {
+                folderSharings: {
                     select: {
                         id: true,
                         account: {

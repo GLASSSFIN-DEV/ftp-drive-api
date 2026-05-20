@@ -1,16 +1,16 @@
-import { HttpException } from "@/common/http-exception";
-import { FtpLibrary } from "@/lib/ftp";
-import { IItemPagination, IOkResponse } from "@/types/common";
-import { Context } from "hono";
-import { IRepositoryFolder, ISource, RepositoryFolder } from "../folder/folder.svc";
-import { FileChangeDto, FileNewDto } from "@/dto/file.dto";
-import { prismaProxy } from "@/lib/prisma";
-import { StatusCodes } from "http-status-codes";
-import { env } from '@/config';
-import { InputJsonObject, JsonValue } from "@prisma/client/runtime/client";
+import { JsonValue, InputJsonObject } from "@prisma/client/runtime/client";
 import { FileInfo, FTPResponse } from "basic-ftp";
-import createPagination from "@/common/pagination";
-import { FileWhereInput } from "@/generated/prisma/models";
+import { StatusCodes } from "http-status-codes";
+import { env } from "../../config.js";
+import { Context } from "hono";
+import { HttpException } from "../../common/http-exception.js";
+import createPagination from "../../common/pagination.js";
+import { FileNewDto, FileChangeDto } from "../../dto/file.dto.js";
+import { FileWhereInput } from "../../generated/prisma/models.js";
+import { FtpLibrary } from "../../lib/ftp.js";
+import { prismaProxy } from "../../lib/prisma.js";
+import { IOkResponse, IItemPagination } from "../../types/common.js";
+import { IRepositoryFolder, RepositoryFolder, ISource } from "../folder/folder.svc.js";
 
 interface IFileObj {
     action?: {
@@ -139,7 +139,7 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Selected file not found!']
         })
 
-        const nameExist = await prismaProxy.file.findFirst({ where: { accountId: account.id, folderName: obj.fileName, folderId: obj.folderId, id: { not: id } } })
+        const nameExist = await prismaProxy.file.findFirst({ where: { accountId: account.id, fileName: obj.fileName, folderId: obj.folderId, id: { not: id } } })
         if (nameExist) throw new HttpException({
             errCode: 'FILE_EXIST',
             statusCode: StatusCodes.CONFLICT,

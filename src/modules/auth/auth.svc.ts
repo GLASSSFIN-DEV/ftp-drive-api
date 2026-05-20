@@ -1,11 +1,11 @@
-import { HttpException } from "@/common/http-exception";
-import { prismaProxy } from "@/lib/prisma";
 import { sign } from 'hono/jwt';
-import { env } from '@/config';
 import { JWTPayload } from "hono/utils/jwt/types";
 import { Context } from "hono";
-import { IOkResponse } from "@/types/common";
 import { StatusCodes } from "http-status-codes";
+import { env } from '../../config.js';
+import { HttpException } from '../../common/http-exception.js';
+import { prismaProxy } from '../../lib/prisma.js';
+import { IOkResponse } from '../../types/common.js';
 
 interface IRepositoryAuth {
     logout(c: Context): Promise<IOkResponse>;
