@@ -1,6 +1,6 @@
 
 import { Hono } from 'hono'
-import { MediaStreamDto } from '../../dto/media.dto.js'
+import { MediaFolderUpload, MediaStreamDto } from '../../dto/media.dto.js'
 import { UuidDto } from '../../dto/query.dto.js'
 import Guard from '../../middleware/auth.validator.js'
 import Validate from '../../middleware/req.validator.js'
@@ -14,7 +14,7 @@ router.post('/media/upload/:id', Validate.for(UuidDto, 'param'), Guard.validate(
     return c.json(value)
 })
 
-router.post('/media/upload/folder', Guard.validate(), async (c) => {
+router.post('/media/upload/folder', Validate.for(MediaFolderUpload, 'query'), Guard.validate(), async (c) => {
     const value = await mediaRepo.folderUpload(c)
     return c.json(value)
 })
