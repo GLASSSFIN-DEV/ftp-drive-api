@@ -807,7 +807,7 @@ export const definition = {
         },
       },
     },
-    '/v1/my-files/{folderId}': {
+    '/v1/my-files/{id}': {
       get: {
         tags: ['File'],
         summary: 'My Files',
@@ -818,7 +818,42 @@ export const definition = {
         ],
         parameters: [
           {
-            name: "folderId",
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Folder Id (UUID) to list files from",
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Success',
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FailResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/file/version/{id}': {
+      get: {
+        tags: ['File'],
+        summary: 'Versions of File',
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
             in: "path",
             required: true,
             schema: { type: "string", format: "uuid" },

@@ -28,6 +28,10 @@ router.get('/my-files/:id', Validate.for(UuidDto, 'param'), Guard.validate(), as
     const value = await fileService.myFiles(c)
     return c.json(value)
 })
+router.get('/file/history/:id', Validate.for(UuidDto, 'param'), Guard.validate(), async (c) => {
+    const value = await fileService.versions(c)
+    return c.json(value)
+})
 
 
 export default router

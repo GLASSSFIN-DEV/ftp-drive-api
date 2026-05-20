@@ -43,12 +43,24 @@ interface IFileObj {
     }[];
 }
 
+interface IFileHistory
+{
+    account: {
+        username: string;
+        fullname: string | null;
+    };
+    id: string;
+    json: JsonValue;
+    createdAt: Date;
+    version: number;
+}
+
 export interface IRepositoryFile {
     newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string, file: FileInfo }>>;
     changeFile(c: Context): Promise<IOkResponse>;
     removeFile(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
-    version(c: Context): Promise<{}[]>;
+    versions(c: Context): Promise<IFileHistory[]>;
     get(c: Context): Promise<Object | null>;
     myFiles(c: Context): Promise<Object[]>;
 }
@@ -464,7 +476,25 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async version(c: Context): Promise<{}[]> {
-        throw new Error("Method not implemented.");
+    async versions(c: Context): Promise<IFileHistory[]> {
+        const account = c.get('account')
+        const fileId = c.req.param('id') 
+        const items = await prismaProxy.fileHistory.findMany({
+            where: { fileId },
+            select: {
+                id: true,
+                version: true,
+                json: true,
+                createdAt: true,
+                account: {
+                    select: {
+                        username: true,
+                        fullname: true,
+                    }
+                }
+            }
+        })
+
+        return items
     }
 }
