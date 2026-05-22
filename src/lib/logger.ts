@@ -3,9 +3,8 @@ import { v7 } from 'uuid';
 import Transport from 'winston-transport';
 import { getContext } from 'hono/context-storage';
 import fastRedact from 'fast-redact';
-import { env } from 'process';
 import { prisma } from './prisma.js';
-import { Logs } from '../config.js';
+import { Logs, env } from '../config.js';
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined;
@@ -98,8 +97,8 @@ try {
     level: 'silly',
     format: logFormat,
     transports: [
-      new PrismaTransport(), 
-      env.LOG === Logs.VERBOSE ? new transports.Console() : null 
+      new transports.Console(),
+      [Logs.ALL, Logs.PRISMA].includes(env.LOG) ? new PrismaTransport() : null,
     ].filter(notEmpty),
   });
 } catch (err) {

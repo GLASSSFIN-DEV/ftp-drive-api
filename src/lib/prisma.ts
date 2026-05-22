@@ -10,24 +10,24 @@ const adapter = new PrismaPg({ connectionString })
 const prisma = new PrismaClient({
     adapter,
     errorFormat: 'pretty',
-    log: [
-        {
-            emit: 'event',
-            level: 'query',
-        },
-        {
-            emit: 'event',
-            level: 'error',
-        },
-        {
-            emit: 'event',
-            level: 'info',
-        },
-        {
-            emit: 'event',
-            level: 'warn',
-        },
-    ],
+    // log: [
+    //     {
+    //         emit: 'event',
+    //         level: 'query',
+    //     },
+    //     {
+    //         emit: 'event',
+    //         level: 'error',
+    //     },
+    //     {
+    //         emit: 'event',
+    //         level: 'info',
+    //     },
+    //     {
+    //         emit: 'event',
+    //         level: 'warn',
+    //     },
+    // ],
 });
 
 prisma.$on(`query`, async (e) => {

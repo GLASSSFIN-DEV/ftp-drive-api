@@ -11,8 +11,10 @@ export enum Environments {
 }
 
 export enum Logs {
-    VERBOSE = 'verbose',
-    NONE = 'none'
+    ALL = 'all',
+    NONE = 'none',
+    PRISMA = 'prisma',
+    FTP = 'ftp'
 }
 
 const ftpConfigValidator = makeValidator<boolean | string | undefined>(
@@ -35,7 +37,7 @@ const config = {
     }),
     NODE_REJECT_UNAUTHORIZE: bool({ default: false }),
     LOG: str({
-        default: Logs.VERBOSE,
+        default: Logs.NONE,
         choices: [...Object.values(Logs)]
     }),
     PORT: num({ default: 9000 }),

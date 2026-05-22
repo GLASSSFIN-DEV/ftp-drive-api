@@ -3,7 +3,7 @@ import { AccessOptions, Client, FileInfo, FTPResponse } from 'basic-ftp'
 import { PassThrough, Readable } from 'stream'
 import { StatusCodes } from 'http-status-codes'
 import logger from './logger.js'
-import { env } from '../config.js'
+import { env, Logs } from '../config.js'
 import { HttpException } from '../common/http-exception.js'
 
 export type FtpEntry = {
@@ -42,7 +42,7 @@ export class FtpLibrary implements IFtpLibrary {
     constructor(port: number = 990) {
         this.client = new Client()
         this.port = port;
-        this.client.ftp.log = (message) => logger.http(`[ftp:${port}] ${message}`)
+        this.client.ftp.log = (message) => env.LOG === Logs.FTP ? logger.http(`[ftp:${port}] ${message}`) : console.debug(message)
         this.client.ftp.verbose = true
     }
 
@@ -100,7 +100,7 @@ export class FtpLibrary implements IFtpLibrary {
         file: FileInfo;
         workingDir: string;
     }> {
-        await this.client.pwd()
+        console.debug(`[ftpLib:uploadFile] --> ${remotePath}`, { obj })
         await this.client.ensureDir(remotePath)
 
         this.client.trackProgress(info => {

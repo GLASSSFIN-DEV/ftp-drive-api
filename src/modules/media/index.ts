@@ -9,13 +9,14 @@ import { RepositoryMedia } from './media.svc.js'
 const router = new Hono()
 const mediaRepo = new RepositoryMedia()
 
-router.post('/media/upload/:id', Validate.for(UuidDto, 'param'), Guard.validate(), async (c) => {
-    const value = await mediaRepo.fileUpload(c)
+router.post('/media/upload/folder', Validate.for(MediaFolderUpload, 'query'), Guard.validate(), async (c) => {
+    const value = await mediaRepo.folderUpload(c)
     return c.json(value)
 })
 
-router.post('/media/upload/folder', Validate.for(MediaFolderUpload, 'query'), Guard.validate(), async (c) => {
-    const value = await mediaRepo.folderUpload(c)
+router.post('/media/upload/:id', Validate.for(UuidDto, 'param'), Guard.validate(), async (c) => {
+    console.debug(`/media/upload/:file`)
+    const value = await mediaRepo.fileUpload(c)
     return c.json(value)
 })
 

@@ -34,8 +34,9 @@ export default class Validate {
         let errors: ValidationError[] = []
         const body = entity === 'param'
           ? c.req.param() : entity === 'query'
-            ? c.req.queries() : await c.req.json()
+            ? c.req.query() : await c.req.json()
 
+        logger.http(`[${entity}]`, { body })
         const convertedObject = plainToInstance(classInstance, body, {
           enableImplicitConversion: true,
           exposeDefaultValues: true,
@@ -56,7 +57,7 @@ export default class Validate {
           errors = await validate(convertedObject as Record<string, unknown>, validatorOpts)
         }
 
-        logger.http(`[${entity}]`, { body, convertedObject, errors })
+        logger.http(`[validate:${entity}]`, { convertedObject })
         if (!errors.length) {
           c.set('validatedBody', convertedObject)
 
@@ -65,7 +66,7 @@ export default class Validate {
         }
 
         const rawErrors = getAllConstraintKeys(errors)
-        logger.error(rawErrors)
+        logger.http(`[error:${entity}]`, { errors })
 
         throw new HttpException({
           errCode: 'VALIDATION_ERROR',
@@ -73,8 +74,6 @@ export default class Validate {
           messages: rawErrors,
         })
       } catch (e) {
-        logger.error(e)
-
         if (e instanceof HttpException) {
           throw e
         }

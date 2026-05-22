@@ -24,7 +24,7 @@ export function errorHandler() {
         traceId: context.get('traceId'),
         errCode: 'INTERNAL_SERVER_ERROR',
         statusCode: 500,
-        messages: ['Internal server error', err],
+        messages: ['Internal server error'],
       },
       500
     )

@@ -1,12 +1,9 @@
 import 'reflect-metadata'
 import { Hono } from 'hono'
-import { csrf } from 'hono/csrf'
-import { compress } from 'hono/compress'
 import { contextStorage } from 'hono/context-storage'
 import { prettyJSON } from 'hono/pretty-json'
 import { secureHeaders } from 'hono/secure-headers'
-import { timeout } from 'hono/timeout'
-import { timing, TimingVariables } from 'hono/timing'
+import { TimingVariables } from 'hono/timing'
 import { v7 } from 'uuid'
 import { swaggerUI } from '@hono/swagger-ui'
 import { cors } from 'hono/cors'
@@ -43,12 +40,8 @@ app.use('*', async (c, next) => {
 // setup middlewares
 app.use('*', cors())
 app.use('*', useTelemetry());
-app.use('*', timing())
-app.use('*', compress())
 app.use('*', secureHeaders())
 app.use('*', prettyJSON())
-app.use('*', csrf())
-app.use('*', timeout(5_000))
 
 // setup routers, based on modules folder
 app.route('/v1', modules)

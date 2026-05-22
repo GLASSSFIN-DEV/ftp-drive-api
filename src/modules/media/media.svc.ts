@@ -17,6 +17,7 @@ import { IOkResponse } from "../../types/common.js";
 import { IRepositoryFile, RepositoryFile } from "../file/file.svc.js";
 import { IRepositoryFolder, RepositoryFolder, ISource } from "../folder/folder.svc.js";
 import { UploadSaga } from "./upload-saga.js";
+import { env } from '../../config.js'
 
 interface ISite { [key: string]: { port: number; dir: string; } }
 interface IUploadRes { remotePath: string; file: FileInfo; }
@@ -182,6 +183,12 @@ export class RepositoryMedia implements IRepositoryMedia {
                 siteId = source.ftpPort!
                 rootParentId = folder.id
             }
+        } else {
+            source = {
+                ftpHost: env.FTP_HOST,
+                ftpPort: siteId,
+                remotePath: homePath
+            }
         }
 
         /* ── parse each relative path into segments + fileName ── */
@@ -205,7 +212,7 @@ export class RepositoryMedia implements IRepositoryMedia {
         const ftpLibrary = new FtpLibrary(siteId)
 
         try {
-            const limit = plimit(5)
+            const limit = plimit(2)
             const results = await Promise.all(
                 items.map(async ({ file, segments, fileName, ftpPath }) =>
                     limit(async () => {
@@ -222,7 +229,6 @@ export class RepositoryMedia implements IRepositoryMedia {
 
                         // 2. Upload file over FTP
                         const buffer = Readable.fromWeb(file.stream() as any)
-                        await ftpLibrary.ensureDir(ftpPath)
                         const ftpRes = await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
                         saga.track({ type: 'ftp', path: ftpPath, siteId })
 

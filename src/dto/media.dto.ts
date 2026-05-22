@@ -31,9 +31,8 @@ export class MediaStreamDto {
 export class MediaFolderUpload {
     @IsString()
     @IsOptional()
-    folderId!: string;
+    folderId?: string;
 
-    @IsNumber()
-    @IsPositive()
-    siteId!: number;
+    @IsString()
+    siteId!: string;
 }
