@@ -126,9 +126,8 @@ export class RepositoryFolder implements IRepositoryFolder {
             if (obj.parentId) parentPath = await this.realPath(obj.parentId)
 
             const workingDir = `${homePath}/${parentPath}`
-            await ftp.ensureDir(workingDir)
-
             const finalPath = (workingDir + '/' + obj.folderName).replace(/\/+/g, '/')
+            console.log(`[finalPath]`, finalPath)
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
                     ftpHost: env.FTP_HOST,
@@ -309,23 +308,36 @@ export class RepositoryFolder implements IRepositoryFolder {
         rootParentId: string | null,
         accountId: string,
         source: ISource,
-        saga: UploadSaga, 
+        saga: UploadSaga,
     ): Promise<string> {           // returns the leaf folderId
         let parentId: string | null = rootParentId
 
         for (const seg of segments) {
-            const created = await prismaProxy.folder.create({
-                data: {
+            // find existing folder under same parent
+            let folder = await prismaProxy.folder.findFirst({
+                where: {
                     folderName: seg,
-                    parentId: parentId ?? undefined,
+                    parentId,
                     accountId,
-                    source: source as any,
                     recordStatus: 'ACTIVE',
                 },
             })
 
-            saga.track({ type: 'folder', id: created.id })
-            parentId = created.id
+            if (!folder) {
+                folder = await prismaProxy.folder.create({
+                    data: {
+                        folderName: seg,
+                        parentId: parentId ?? undefined,
+                        accountId,
+                        source: source as any,
+                        recordStatus: 'ACTIVE',
+                    },
+                })
+
+                saga.track({ type: 'folder', id: folder.id })
+            }
+
+            parentId = folder.id
         }
 
         return parentId as string  // leaf folder id

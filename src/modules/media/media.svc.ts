@@ -22,23 +22,17 @@ import { env } from '../../config.js'
 interface ISite { [key: string]: { port: number; dir: string; } }
 interface IUploadRes { remotePath: string; file: FileInfo; }
 interface IFolderUploadRes {
-    ftpRes: {
-        file: FileInfo;
-        workingDir: string;
-    };
-    fileRecord: {
-        folderId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date | null;
-        recordStatus: RecordStatus;
-        accountId: string;
-        source: JsonValue;
-        fileName: string;
-        fileHash: string | null;
-        fileSize: number;
-        fileType: string;
-    };
+    folderId: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date | null;
+    recordStatus: RecordStatus;
+    accountId: string;
+    source: JsonValue;
+    fileName: string;
+    fileHash: string | null;
+    fileSize: number;
+    fileType: string;
 }
 interface IRepositoryMedia {
     fileUpload(c: Context): Promise<IOkResponse<IUploadRes[]>>;
@@ -144,29 +138,6 @@ export class RepositoryMedia implements IRepositoryMedia {
         const homePath = account.homePath
         const body = await c.req.parseBody({ all: true })
 
-        /* ── validate files ── */
-        const rawFiles = body['files']
-        const files: File[] = (Array.isArray(rawFiles) ? rawFiles : [rawFiles])
-            .filter((f): f is File => !!f && typeof f !== 'string')
-
-        const rawPaths = body['paths[]']
-        const relativePaths: string[] = (Array.isArray(rawPaths) ? rawPaths : [rawPaths])
-            .filter((p): p is string => typeof p === 'string' && p.length > 0)
-
-        if (files.length === 0)
-            throw new HttpException({
-                errCode: 'EMPTY_FILE',
-                statusCode: StatusCodes.NOT_FOUND,
-                messages: ['No file found!'],
-            })
-
-        if (relativePaths.length !== files.length)
-            throw new HttpException({
-                errCode: 'RELATIVE_PATH_NOT_SYNCUP',
-                statusCode: StatusCodes.BAD_REQUEST,
-                messages: [`"paths[]" count (${relativePaths.length}) must match "files" count (${files.length})`],
-            })
-
         /* ── resolve root folder / siteId ── */
         let workingDir = ''
         let rootParentId: string | null = null
@@ -184,12 +155,37 @@ export class RepositoryMedia implements IRepositoryMedia {
                 rootParentId = folder.id
             }
         } else {
+            workingDir = homePath
             source = {
                 ftpHost: env.FTP_HOST,
                 ftpPort: siteId,
                 remotePath: homePath
             }
         }
+
+        /* ── validate files ── */
+        const rawFiles = body['files']
+        const files: File[] = (Array.isArray(rawFiles) ? rawFiles : [rawFiles])
+            .filter((f): f is File => !!f && typeof f !== 'string')
+
+        const rawPaths = body['paths[]']
+        const _relativePaths: string[] = (Array.isArray(rawPaths) ? rawPaths : [rawPaths])
+            .filter((p): p is string => typeof p === 'string' && p.length > 0)
+        const relativePaths = _relativePaths.map(path => `${workingDir}/${path}`)
+
+        if (files.length === 0)
+            throw new HttpException({
+                errCode: 'EMPTY_FILE',
+                statusCode: StatusCodes.NOT_FOUND,
+                messages: ['No file found!'],
+            })
+
+        if (relativePaths.length !== files.length)
+            throw new HttpException({
+                errCode: 'RELATIVE_PATH_NOT_SYNCUP',
+                statusCode: StatusCodes.BAD_REQUEST,
+                messages: [`"paths[]" count (${relativePaths.length}) must match "files" count (${files.length})`],
+            })
 
         /* ── parse each relative path into segments + fileName ── */
         type UploadItem = {
@@ -199,59 +195,74 @@ export class RepositoryMedia implements IRepositoryMedia {
             ftpPath: string     // full remote path for FTP
         }
 
+        const normalizedWorkingDir = workingDir.replace(/\/+$/, '')
         const items: UploadItem[] = relativePaths.map((rel, i) => {
-            const parts = rel.replace(/\/+/g, '/').replace(/^\//, '').split('/')
-            const fileName = parts.pop()!   // last segment = file name
-            const segments = parts          // remaining = folder hierarchy
-            const ftpPath = `${workingDir}/${rel}`.replace(/\/+/g, '/')
-            return { file: files[i], segments, fileName, ftpPath }
+            const parts = rel
+                .replace(/\/+/g, '/')
+                .replace(/^\//, '')
+                .split('/')
+
+            // remove duplicated root folder
+            if (parts[0] === normalizedWorkingDir) {
+                parts.shift()
+            }
+
+            const fileName = parts.pop()!
+            const segments = parts
+
+            const ftpPath = `${normalizedWorkingDir}/${segments.join('/')}`
+                .replace(/\/+/g, '/')
+
+            return {
+                file: files[i],
+                segments,
+                fileName,
+                ftpPath,
+            }
         })
 
         /* ── saga: one instance covers ALL files in this request ── */
         const saga = new UploadSaga()
         const ftpLibrary = new FtpLibrary(siteId)
-
+        
         try {
-            const limit = plimit(2)
-            const results = await Promise.all(
-                items.map(async ({ file, segments, fileName, ftpPath }) =>
-                    limit(async () => {
-                        // 1. Create fresh DB folder chain → get the leaf folderId
-                        const leafFolderId = segments.length > 0
-                            ? await this.folderRepo.createFolderChain(segments, rootParentId, account.id, source, saga)
-                            : rootParentId ?? (() => {
-                                throw new HttpException({
-                                    errCode: 'NO_ROOT_FOLDER',
-                                    statusCode: StatusCodes.BAD_REQUEST,
-                                    messages: ['A folderId is required when files have no subfolder path'],
-                                })
-                            })()
-
-                        // 2. Upload file over FTP
-                        const buffer = Readable.fromWeb(file.stream() as any)
-                        const ftpRes = await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
-                        saga.track({ type: 'ftp', path: ftpPath, siteId })
-
-                        // 3. Insert File record — always a new row
-                        const fileRecord = await prismaProxy.file.create({
-                            data: {
-                                fileName,
-                                folderId: leafFolderId,
-                                accountId: account.id,
-                                fileSize: file.size,
-                                fileType: file.type || 'application/octet-stream',
-                                source: source as any,
-                                recordStatus: 'ACTIVE',
-                            },
+            const records = []
+            for (const { file, segments, fileName, ftpPath } of items) {
+                // 1. Create fresh DB folder chain → get the leaf folderId
+                await ftpLibrary.connect()
+                const leafFolderId = segments.length > 0
+                    ? await this.folderRepo.createFolderChain(segments, rootParentId, account.id, source, saga)
+                    : rootParentId ?? (() => {
+                        throw new HttpException({
+                            errCode: 'NO_ROOT_FOLDER',
+                            statusCode: StatusCodes.BAD_REQUEST,
+                            messages: ['A folderId is required when files have no subfolder path'],
                         })
+                    })()
 
-                        saga.track({ type: 'file', id: fileRecord.id })
-                        return { ftpRes, fileRecord }
-                    })
-                )
-            )
+                // 2. Upload file over FTP
+                const buffer = Readable.fromWeb(file.stream() as any)
+                await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
+                saga.track({ type: 'ftp', path: ftpPath, siteId })
 
-            return { statusCode: 200, messages: [], payload: results }
+                // 3. Insert File record — always a new row
+                const fileRecord = await prismaProxy.file.create({
+                    data: {
+                        fileName,
+                        folderId: leafFolderId,
+                        accountId: account.id,
+                        fileSize: file.size,
+                        fileType: file.type || 'application/octet-stream',
+                        source: source as any,
+                        recordStatus: 'ACTIVE',
+                    },
+                })
+
+                saga.track({ type: 'file', id: fileRecord.id })
+                records.push(fileRecord)
+            }
+
+            return { statusCode: 200, messages: [], payload: records }
         } catch (error) {
             await saga.rollback(ftpLibrary)
             throw error

@@ -13,10 +13,7 @@ export type FtpEntry = {
     name:        string
 }
 export interface IFtpLibrary {
-    uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string }): Promise<{
-        file: FileInfo;
-        workingDir: string;
-    }>;
+    uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string }): Promise<void>;
     streamFile(remotePath: string, fileName: string): Promise<{
         stream: ReadableStream<Uint8Array>;
         size: number;
@@ -42,8 +39,8 @@ export class FtpLibrary implements IFtpLibrary {
     constructor(port: number = 990) {
         this.client = new Client()
         this.port = port;
-        this.client.ftp.log = (message) => env.LOG === Logs.FTP ? logger.http(`[ftp:${port}] ${message}`) : console.debug(message)
-        this.client.ftp.verbose = true
+        // this.client.ftp.log = (message) => env.LOG === Logs.FTP ? logger.http(`[ftp:${port}] ${message}`) : console.debug(message)
+        // this.client.ftp.verbose = true
     }
 
     async connect() {
@@ -96,24 +93,17 @@ export class FtpLibrary implements IFtpLibrary {
      * @param obj 
      * @returns 
      */
-    async uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string; }): Promise<{
-        file: FileInfo;
-        workingDir: string;
-    }> {
-        console.debug(`[ftpLib:uploadFile] --> ${remotePath}`, { obj })
-        await this.client.ensureDir(remotePath)
+    async uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string; }): Promise<void> {
+        const pwd = await this.client.pwd()
+        if (pwd !== remotePath) await this.client.ensureDir(remotePath)
 
         this.client.trackProgress(info => {
             logger.http('[ftp]', { ...info })
         })
 
         await this.client.uploadFrom(obj.buffer, obj.fileName)
-        const workingDir = await this.client.pwd()
-        const file = await this.findFile(workingDir, obj.fileName)
-
         this.client.trackProgress()
-
-        return { workingDir, file }
+        await this.client.close()
     }
 
     /**
@@ -232,8 +222,8 @@ export class FtpLibrary implements IFtpLibrary {
     * @param remotePath 
     */
     async ensureDir(remotePath: string): Promise<void> {
-        await this.client.pwd()
-        await this.client.ensureDir(remotePath)
+        const pwd = await this.client.pwd()
+        if (pwd !== remotePath) await this.client.ensureDir(remotePath)
     }
 
     /**
@@ -304,8 +294,8 @@ export class FtpLibrary implements IFtpLibrary {
      * @param name 
      */
     async send(remotePath: string, name: string, command: string): Promise<FTPResponse> {
-        await this.client.pwd()
-        await this.client.ensureDir(remotePath)
+        const pwd = await this.client.pwd()
+        if (pwd !== remotePath) await this.client.ensureDir(remotePath)
 
         const features = await this.client.features()
         if (!features.has(command)) throw new HttpException({
