@@ -1,7 +1,7 @@
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getContext } from 'hono/context-storage';
-import { env } from '../config.js';
+import { env, Logs } from '../config.js';
 import { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import logger from './logger.js';
 
@@ -63,7 +63,9 @@ export function prismaWithContext(ctx: { traceId?: string; }) {
                     const duration = performance.now() - start
                     const endAt = new Date()
 
-                    logger.http(`[prisma]`, { traceId: ctx.traceId, model, operation, duration, args, startAt, endAt })
+                    if ([Logs.ALL, Logs.PRISMA].includes(env.LOG))
+                        logger.http(`[prisma]`, { traceId: ctx.traceId, model, operation, duration, args, startAt, endAt })
+                    
                     return result
                 }
             }

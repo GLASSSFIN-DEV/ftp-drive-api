@@ -61,10 +61,10 @@ export interface IRepositoryFolder {
     changeFolder(c: Context): Promise<IOkResponse>;
     removeFolder(c: Context): Promise<IOkResponse>;
     createFolderChain(
-        segments: string[], 
-        rootParentId: string | undefined, 
-        accountId: string, 
-        source: ISource, 
+        segments: string[],
+        rootParentId: string | undefined,
+        accountId: string,
+        source: ISource,
         saga: UploadSaga
     ): Promise<{ id: string; name: string }>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
@@ -539,7 +539,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         const query = c.req.query()
         const { keyword, startDate, endDate, parentId } = c.req.query()
         const where: FolderWhereInput = {
-            parentId, accountId: account.id,
+            accountId: account.id,
             createdAt: {
                 gte: startDate ? new Date(startDate) : undefined,
                 lt: endDate ? new Date(endDate) : undefined,
@@ -561,6 +561,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             ]
         }
 
+        where['parentId'] = parentId ?? null
         const orderBy = createOrderBy(query, { createdAt: 'desc' });
         const items = await prismaProxy.folder.findMany({
             where,

@@ -43,8 +43,7 @@ interface IFileObj {
     }[];
 }
 
-interface IFileHistory
-{
+interface IFileHistory {
     account: {
         username: string;
         fullname: string | null;
@@ -257,14 +256,14 @@ export class RepositoryFile implements IRepositoryFile {
         const ftp = new FtpLibrary(source.ftpPort)
         try {
             await ftp.connect()
-        const currentDir = await this.folderRepo.realPath(exist.id)
-        const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
-        await ftp.removeFile(lastWorkDir, exist.fileName)
+            const currentDir = await this.folderRepo.realPath(exist.id)
+            const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
+            await ftp.removeFile(lastWorkDir, exist.fileName)
 
-        return {
-            statusCode: StatusCodes.OK,
-            messages: ['File Deleted']
-        } satisfies IOkResponse
+            return {
+                statusCode: StatusCodes.OK,
+                messages: ['File Deleted']
+            } satisfies IOkResponse
         } finally {
             ftp.close()
         }
@@ -411,6 +410,7 @@ export class RepositoryFile implements IRepositoryFile {
     async myFiles(c: Context): Promise<Object[]> {
         const account = c.get('account')
         const folderId = c.req.param('id')
+
         const { keyword, startDate, endDate } = c.req.query()
         const where: FileWhereInput = {
             folderId, accountId: account.id,
@@ -418,18 +418,11 @@ export class RepositoryFile implements IRepositoryFile {
                 gte: startDate ? new Date(startDate) : undefined,
                 lt: endDate ? new Date(endDate) : undefined,
             },
-            OR: [
-                { fileName: { contains: keyword, mode: 'insensitive' } },
-                {
-                    fileSharings: {
-                        some: {
-                            toAccount: {
-                                fullname: { contains: keyword, mode: 'insensitive' }
-                            }
-                        }
-                    }
-                }
-            ]
+            AND: {
+                OR: [
+                    { fileName: { contains: keyword, mode: 'insensitive' } },
+                ]
+            }
         }
 
         const items = await prismaProxy.file.findMany({
@@ -478,7 +471,7 @@ export class RepositoryFile implements IRepositoryFile {
      */
     async versions(c: Context): Promise<IFileHistory[]> {
         const account = c.get('account')
-        const fileId = c.req.param('id') 
+        const fileId = c.req.param('id')
         const items = await prismaProxy.fileHistory.findMany({
             where: { fileId },
             select: {
