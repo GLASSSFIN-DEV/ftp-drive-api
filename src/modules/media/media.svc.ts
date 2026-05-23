@@ -18,6 +18,7 @@ import { IRepositoryFile, RepositoryFile } from "../file/file.svc.js";
 import { IRepositoryFolder, RepositoryFolder, ISource } from "../folder/folder.svc.js";
 import { UploadSaga } from "./upload-saga.js";
 import { env } from '../../config.js'
+import logger from "../../lib/logger.js";
 
 interface ISite { [key: string]: { port: number; dir: string; } }
 interface IUploadRes { remotePath: string; file: FileInfo; }
@@ -140,7 +141,7 @@ export class RepositoryMedia implements IRepositoryMedia {
 
         /* ── resolve root folder / siteId ── */
         let workingDir = ''
-        let rootParentId: string | null = null
+        let rootFolder: undefined | { id: string; name: string } = undefined;
         let source!: ISource
         const folderId = c.req.query('folderId')
         let siteId = Number(c.req.query('siteId'))
@@ -152,7 +153,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                 workingDir = `${homePath}/${folderPath}`
                 source = folder.source as ISource
                 siteId = source.ftpPort!
-                rootParentId = folder.id
+                rootFolder = { id: folder.id, name: folder.folderName }
             }
         } else {
             workingDir = homePath
@@ -203,15 +204,11 @@ export class RepositoryMedia implements IRepositoryMedia {
                 .split('/')
 
             // remove duplicated root folder
-            if (parts[0] === normalizedWorkingDir) {
-                parts.shift()
-            }
+            if (parts[0] === normalizedWorkingDir) parts.shift()
 
             const fileName = parts.pop()!
             const segments = parts
-
-            const ftpPath = `${normalizedWorkingDir}/${segments.join('/')}`
-                .replace(/\/+/g, '/')
+            const ftpPath = `${normalizedWorkingDir}/${segments.join('/')}`.replace(/\/+/g, '/')
 
             return {
                 file: files[i],
@@ -224,15 +221,15 @@ export class RepositoryMedia implements IRepositoryMedia {
         /* ── saga: one instance covers ALL files in this request ── */
         const saga = new UploadSaga()
         const ftpLibrary = new FtpLibrary(siteId)
-        
+
         try {
             const records = []
             for (const { file, segments, fileName, ftpPath } of items) {
                 // 1. Create fresh DB folder chain → get the leaf folderId
                 await ftpLibrary.connect()
-                const leafFolderId = segments.length > 0
-                    ? await this.folderRepo.createFolderChain(segments, rootParentId, account.id, source, saga)
-                    : rootParentId ?? (() => {
+                const leafFolder: { id: string; name: string } = segments.length > 0
+                    ? await this.folderRepo.createFolderChain(segments, rootFolder?.id, account.id, source, saga)
+                    : rootFolder ?? (() => {
                         throw new HttpException({
                             errCode: 'NO_ROOT_FOLDER',
                             statusCode: StatusCodes.BAD_REQUEST,
@@ -240,26 +237,54 @@ export class RepositoryMedia implements IRepositoryMedia {
                         })
                     })()
 
-                // 2. Upload file over FTP
+                logger.http(`[leaf]`, { fileName, segments, ftpPath, leafFolder })
+
+                // 3. Upload new FTP file
                 const buffer = Readable.fromWeb(file.stream() as any)
                 await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
                 saga.track({ type: 'ftp', path: ftpPath, siteId })
 
-                // 3. Insert File record — always a new row
-                const fileRecord = await prismaProxy.file.create({
-                    data: {
-                        fileName,
-                        folderId: leafFolderId,
-                        accountId: account.id,
-                        fileSize: file.size,
-                        fileType: file.type || 'application/octet-stream',
-                        source: source as any,
-                        recordStatus: 'ACTIVE',
+                // 4. Find unique file-folder
+                const existingFile = await prismaProxy.file.findUnique({
+                    where: {
+                        folderId_fileName: {
+                            folderId: leafFolder.id,
+                            fileName,
+                        },
                     },
                 })
 
-                saga.track({ type: 'file', id: fileRecord.id })
+                const fileRecord = await prismaProxy.file.upsert({
+                    where: {
+                        folderId_fileName: {
+                            folderId: leafFolder.id,
+                            fileName,
+                        },
+                    },
+                    create: {
+                        fileName,
+                        folderId: leafFolder.id,
+                        accountId: account.id,
+                        fileSize: file.size,
+                        fileType: file.type,
+                        source: source as any,
+                        recordStatus: 'ACTIVE',
+                    },
+                    update: {
+                        fileSize: file.size,
+                        fileType: file.type,
+                        updatedAt: new Date(),
+                    },
+                })
+
                 records.push(fileRecord)
+                // ONLY track newly created rows
+                if (!existingFile) {
+                    saga.track({
+                        type: 'file',
+                        id: fileRecord.id,
+                    })
+                }
             }
 
             return { statusCode: 200, messages: [], payload: records }

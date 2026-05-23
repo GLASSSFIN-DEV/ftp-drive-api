@@ -184,6 +184,8 @@ model File {
   @@index([fileName])
   @@index([folderId, fileName])
   @@index([accountId, folderId])
+  
+  @@unique([folderId, fileName])
   @@schema("drive")
 }
 

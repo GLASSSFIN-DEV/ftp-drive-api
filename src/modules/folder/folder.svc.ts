@@ -60,7 +60,13 @@ export interface IRepositoryFolder {
     newFolder(c: Context): Promise<IOkResponse>;
     changeFolder(c: Context): Promise<IOkResponse>;
     removeFolder(c: Context): Promise<IOkResponse>;
-    createFolderChain(segments: string[], rootParentId: string | null, accountId: string, source: ISource, saga: UploadSaga): Promise<string>;
+    createFolderChain(
+        segments: string[], 
+        rootParentId: string | undefined, 
+        accountId: string, 
+        source: ISource, 
+        saga: UploadSaga
+    ): Promise<{ id: string; name: string }>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
     get(c: Context): Promise<Object | null>;
     realPath(folderId: string): Promise<string>;
@@ -297,6 +303,15 @@ export class RepositoryFolder implements IRepositoryFolder {
 
     /**
      * 
+     * @param str 
+     * @returns 
+     */
+    private escapeRegExp(str: string): string {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    }
+
+    /**
+     * 
      * @param segments 
      * @param rootParentId 
      * @param accountId 
@@ -305,15 +320,17 @@ export class RepositoryFolder implements IRepositoryFolder {
      */
     async createFolderChain(
         segments: string[],       // ["myFolder", "sub"]
-        rootParentId: string | null,
+        rootParentId: string | undefined,
         accountId: string,
         source: ISource,
         saga: UploadSaga,
-    ): Promise<string> {           // returns the leaf folderId
-        let parentId: string | null = rootParentId
+    ): Promise<{ id: string; name: string }> {           // returns the leaf folderId
+        let parentId: string | undefined = rootParentId
+        let folderName: string | undefined
 
         for (const seg of segments) {
-            // find existing folder under same parent
+            // NORMAL NESTED BEHAVIOUR
+            // reuse existing folders
             let folder = await prismaProxy.folder.findFirst({
                 where: {
                     folderName: seg,
@@ -338,9 +355,13 @@ export class RepositoryFolder implements IRepositoryFolder {
             }
 
             parentId = folder.id
+            folderName = folder.folderName
         }
 
-        return parentId as string  // leaf folder id
+        return {
+            id: parentId!,
+            name: folderName!
+        }
     }
 
     /**

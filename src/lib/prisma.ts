@@ -1,7 +1,7 @@
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getContext } from 'hono/context-storage';
-import { env, Environments } from '../config.js';
+import { env } from '../config.js';
 import { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import logger from './logger.js';
 
@@ -13,67 +13,14 @@ const prisma = new PrismaClient({
     log: [
         {
             emit: 'event',
-            level: 'query',
-        },
-        {
-            emit: 'event',
             level: 'error',
-        },
-        {
-            emit: 'event',
-            level: 'info',
-        },
-        {
-            emit: 'event',
-            level: 'warn',
         },
     ],
 });
 
-prisma.$on(`query`, async (e) => {
-    if (env.NODE_ENV === Environments.PRODUCTION) loopQueryEventProd(e)
-    else loopQueryEvent(e);
-});
-prisma.$on(`info`, async (e) => {
-    loopLogEvent(e, 'info');
-});
 prisma.$on(`error`, async (e) => {
     loopLogEvent(e, 'err');
 });
-prisma.$on(`warn`, async (e) => {
-    loopLogEvent(e, 'warn');
-});
-
-/**
- *
- * @param object
- */
-const loopQueryEvent = (object: Prisma.QueryEvent) => {
-    for (const key in object) {
-        if (Object.prototype.hasOwnProperty.call(object, key)) {
-            const typedKey = key as keyof Prisma.QueryEvent
-            const element = object[typedKey];
-            if (key === 'duration' && Number(element) > 500) logger.warn(`[🐢 slow prisma query]: ${key}: ${element}`);
-            else logger.info(`[prisma-query]: ${key}: ${element}`);
-        }
-    }
-};
-
-/**
- *
- * @param object
- */
-const loopQueryEventProd = (object: Prisma.QueryEvent) => {
-    const { params, ...rest } = object
-    for (const key in rest) {
-        if (Object.prototype.hasOwnProperty.call(rest, key)) {
-            const typedKey = key as keyof Prisma.QueryEvent
-            const element = object[typedKey];
-            if (key === 'duration' && Number(element) > 500) logger.warn(`[🐢 slow prisma query]: ${key}: ${element}`);
-            else logger.info(`[prisma-query]: ${key}: ${element}`);
-        }
-    }
-}
 
 /**
  *

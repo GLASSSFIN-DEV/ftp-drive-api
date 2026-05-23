@@ -76,13 +76,14 @@ export const reconcileOrphanedFiles = inngest.createFunction(
 
                 try {
                     for (const dbFile of files) {
-
+                        await ftp.connect()
                         // get truthly path based on folderId
                         const homeDir = homePath(dbFile.account.username)
                         const realPath = await folderRepo.realPath(dbFile.folderId)
                         const workingDir = `${homeDir}/${realPath}`
                         const exists = await ftp.findFile(workingDir, dbFile.fileName)
 
+                        ftp.close()
                         if (!exists) {
                             logger.warn(`DB file ${dbFile.id} has no FTP counterpart at ${workingDir}`)
                             orphanedDbIds.push(dbFile.id)
@@ -97,6 +98,8 @@ export const reconcileOrphanedFiles = inngest.createFunction(
                     }))
 
                     const realPaths = await Promise.allSettled(realPathPromise)
+                    
+                    await ftp.connect()
                     const ftpFiles = (await ftp.listAllFiles()).map(e => e.path)   // returns string[] of full paths
                     const dbPaths = new Set(
                         realPaths
@@ -143,6 +146,7 @@ export const reconcileOrphanedFiles = inngest.createFunction(
             for (const { path, siteId } of orphanedFtpPaths) {
                 const ftp = new FtpLibrary(siteId)
                 try {
+                    await ftp.connect()
                     await ftp.removeFile(path, 'file-tobe')
                     deleted++
                 } catch (err) {

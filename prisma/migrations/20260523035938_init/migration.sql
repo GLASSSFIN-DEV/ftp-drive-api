@@ -277,6 +277,9 @@ CREATE INDEX "File_folderId_fileName_idx" ON "File"("folderId", "fileName");
 CREATE INDEX "File_accountId_folderId_idx" ON "File"("accountId", "folderId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "File_folderId_fileName_key" ON "File"("folderId", "fileName");
+
+-- CreateIndex
 CREATE INDEX "FileHistory_fileId_accountId_idx" ON "FileHistory"("fileId", "accountId");
 
 -- CreateIndex
