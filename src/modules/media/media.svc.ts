@@ -21,7 +21,7 @@ import { env } from '../../config.js'
 import logger from "../../lib/logger.js";
 
 interface ISite { [key: string]: { port: number; dir: string; } }
-interface IUploadRes { remotePath: string; file: FileInfo; }
+interface IUploadRes { remotePath: string; }
 interface IFolderUploadRes {
     folderId: string;
     id: string;
@@ -94,9 +94,9 @@ export class RepositoryMedia implements IRepositoryMedia {
         /* execution */
         const ftpLibrary = new FtpLibrary(Number(site))
         try {
-            await ftpLibrary.connect()
             const limitFtp = plimit(10)
             const promise = files.map(async (file) => limitFtp(async () => {
+                await ftpLibrary.connect()
                 const buffer = Readable.fromWeb(file.stream() as any)
                 const res = await ftpLibrary.uploadFile(workingDir, { buffer, fileName: file.name })
                 return { res, file }

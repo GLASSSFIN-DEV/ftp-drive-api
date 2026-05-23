@@ -1,5 +1,5 @@
 import { JsonValue, InputJsonObject } from "@prisma/client/runtime/client";
-import { FileInfo, FTPResponse } from "basic-ftp";
+import { FTPResponse } from "basic-ftp";
 import { StatusCodes } from "http-status-codes";
 import { env } from "../../config.js";
 import { Context } from "hono";
@@ -55,7 +55,7 @@ interface IFileHistory {
 }
 
 export interface IRepositoryFile {
-    newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string, file: FileInfo }>>;
+    newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string }>>;
     changeFile(c: Context): Promise<IOkResponse>;
     removeFile(c: Context): Promise<IOkResponse>;
     lists(c: Context): Promise<IItemPagination<IFileObj[]>>;
@@ -75,7 +75,7 @@ export class RepositoryFile implements IRepositoryFile {
      * 
      * @param c 
      */
-    async newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string, file: FileInfo }>> {
+    async newFile(c: Context, obj: FileNewDto): Promise<IOkResponse<{ remotePath: string }>> {
         const account = c.get('account')
         const homePath = account.homePath
         const folder = await prismaProxy.folder.findFirst({ where: { id: obj.folderId, accountId: account.id } })
@@ -86,44 +86,48 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Selected folder not found!']
         })
 
-        const ftp = new FtpLibrary(obj.siteId)
         try {
-            await ftp.connect()
             const remotePath = await this.folderRepo.realPath(folder.id)
             const workingDir = `${homePath}/${remotePath}`.replace(/\/+/g, '/')
-            await ftp.ensureDir(workingDir)
-            const fileHash = await ftp.send(workingDir, obj.fileName, 'XMD5')
-
+            
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
                     ftpHost: env.FTP_HOST,
                     ftpPort: obj.siteId,
                     remotePath: workingDir,
-                    fileHash: fileHash as FTPResponse
                 }
 
-                await tx.file.create({
-                    data: {
-                        accountId: account.id,
-                        folderId: obj.folderId,
+                await tx.file.upsert({
+                    where: {
+                        folderId_fileName: {
+                            folderId: obj.folderId,
+                            fileName: obj.fileName,
+                        },
+                    },
+                    create: {
                         fileName: obj.fileName,
+                        folderId: obj.folderId,
+                        accountId: account.id,
                         fileSize: obj.fileSize,
                         fileType: obj.fileType,
-                        fileHash: fileHash.message,
-                        source: source as unknown as InputJsonObject,
-                        recordStatus: 'ACTIVE'
-                    }
+                        source: source as any,
+                        recordStatus: 'ACTIVE',
+                    },
+                    update: {
+                        fileSize: obj.fileSize,
+                        fileType: obj.fileType,
+                        updatedAt: new Date(),
+                    },
                 })
             })
 
-            const file = await ftp.findFile(workingDir, obj.fileName)
             return {
                 statusCode: StatusCodes.CREATED,
                 messages: ['File uploaded'],
-                payload: { remotePath, file }
+                payload: { remotePath }
             } satisfies IOkResponse
         } finally {
-            ftp.close()
+            
         }
     }
 

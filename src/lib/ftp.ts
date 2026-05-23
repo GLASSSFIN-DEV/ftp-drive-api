@@ -103,7 +103,7 @@ export class FtpLibrary implements IFtpLibrary {
 
         await this.client.uploadFrom(obj.buffer, obj.fileName)
         this.client.trackProgress()
-        await this.client.close()
+        this.client.close()
     }
 
     /**
