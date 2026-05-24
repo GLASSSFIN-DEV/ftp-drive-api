@@ -323,15 +323,6 @@ export class RepositoryFolder implements IRepositoryFolder {
 
     /**
      * 
-     * @param str 
-     * @returns 
-     */
-    private escapeRegExp(str: string): string {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    }
-
-    /**
-     * 
      * @param segments 
      * @param rootParentId 
      * @param accountId 

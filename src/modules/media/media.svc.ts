@@ -172,7 +172,7 @@ export class RepositoryMedia implements IRepositoryMedia {
         const rawPaths = body['paths[]']
         const _relativePaths: string[] = (Array.isArray(rawPaths) ? rawPaths : [rawPaths])
             .filter((p): p is string => typeof p === 'string' && p.length > 0)
-        const relativePaths = _relativePaths.map(path => `${workingDir}/${path}`)
+        const relativePaths = _relativePaths.map(path => `${workingDir}/${path}`.replace(/\/+$/, ''))
 
         if (files.length === 0)
             throw new HttpException({
@@ -196,26 +196,28 @@ export class RepositoryMedia implements IRepositoryMedia {
             ftpPath: string     // full remote path for FTP
         }
 
-        const normalizedWorkingDir = workingDir.replace(/\/+$/, '')
+        // Normalize workingDir into clean segments for prefix stripping
+        const workingDirSegments = workingDir
+            .replace(/\/+/g, '/')
+            .replace(/^\/|\/$/g, '')
+            .split('/')
+            .filter(Boolean)
+
         const items: UploadItem[] = relativePaths.map((rel, i) => {
             const parts = rel
                 .replace(/\/+/g, '/')
                 .replace(/^\//, '')
                 .split('/')
 
-            // remove duplicated root folder
-            if (parts[0] === normalizedWorkingDir) parts.shift()
-
             const fileName = parts.pop()!
-            const segments = parts
-            const ftpPath = `${normalizedWorkingDir}/${segments.join('/')}`.replace(/\/+/g, '/')
+            // Strip the full workingDir prefix instead of just shift()
+            // workingDirSegments = ['anonymous_ikwijaya', 'router']
+            // parts              = ['anonymous_ikwijaya', 'router', 'types']
+            // → segments         = ['types']
+            const segments = parts.slice(workingDirSegments.length)
+            const ftpPath = `${workingDir}/${segments.join('/')}`.replace(/\/+/g, '/')
 
-            return {
-                file: files[i],
-                segments,
-                fileName,
-                ftpPath,
-            }
+            return { file: files[i], segments, fileName, ftpPath }
         })
 
         /* ── saga: one instance covers ALL files in this request ── */
