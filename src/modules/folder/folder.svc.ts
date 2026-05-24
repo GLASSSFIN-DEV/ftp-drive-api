@@ -12,6 +12,7 @@ import { FtpLibrary } from "../../lib/ftp.js";
 import { prismaProxy } from "../../lib/prisma.js";
 import { IOkResponse, IItemPagination } from "../../types/common.js";
 import { UploadSaga } from "../media/upload-saga.js";
+import pLimit from "p-limit";
 
 interface IFolderObj {
     action?: {
@@ -250,6 +251,23 @@ export class RepositoryFolder implements IRepositoryFolder {
     }
 
     /**
+     * Get nested folders for delete purpose
+     * 
+     * @param parentId 
+     * @param accountId 
+     * @returns 
+     */
+    private async getNestedFolders(parentId: string, accountId: string): Promise<string[]> {
+        const childs = await prismaProxy.folder.findMany({ where: { parentId, accountId } })
+        if (childs.length === 0) return [parentId]
+
+        const limit = pLimit(5)
+        const nestedIds = await Promise.all(childs.map(async (e) => limit(async () => await this.getNestedFolders(e.id, accountId))))
+
+        return [parentId, ...nestedIds.flat()]
+    }
+
+    /**
      * 
      * @param c 
      */
@@ -272,13 +290,8 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Your folder source not defined!']
         })
 
-        const fileIds = await prismaProxy.file.findMany({ where: { folderId: id } })
-        await prismaProxy.$transaction(async (tx) => {
-            await tx.fileSharing.deleteMany({ where: { fileId: { in: fileIds.map(e => e.id) }, accountId: account.id } })
-            await tx.folderSharing.deleteMany({ where: { folderId: id, accountId: account.id } })
-            await tx.file.deleteMany({ where: { folderId: id, accountId: account.id } })
-            await tx.folder.delete({ where: { id, accountId: account.id } })
-        })
+        const folderIds = await this.getNestedFolders(id, account.id)
+        const fileIds = await prismaProxy.file.findMany({ where: { folderId: { in: folderIds }, accountId: account.id } })
 
         const ftp = new FtpLibrary(source.ftpPort)
         try {
@@ -287,6 +300,13 @@ export class RepositoryFolder implements IRepositoryFolder {
             const workingDir = `${homePath}/${currentDir}`
 
             await ftp.removeDir(workingDir.replace(/\/+/g, '/'))
+            // delete everythings in folders and files
+            await prismaProxy.$transaction(async (tx) => {
+                await tx.fileSharing.deleteMany({ where: { fileId: { in: fileIds.map(e => e.id) }, accountId: account.id } })
+                await tx.folderSharing.deleteMany({ where: { folderId: { in: folderIds }, accountId: account.id } })
+                await tx.file.deleteMany({ where: { id: { in: fileIds.map(e => e.id) }, accountId: account.id } })
+                await tx.folder.deleteMany({ where: { id: { in: folderIds }, accountId: account.id } })
+            })
 
             return {
                 statusCode: StatusCodes.OK,
