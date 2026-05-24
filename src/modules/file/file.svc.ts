@@ -89,7 +89,7 @@ export class RepositoryFile implements IRepositoryFile {
         try {
             const remotePath = await this.folderRepo.realPath(folder.id)
             const workingDir = `${homePath}/${remotePath}`.replace(/\/+/g, '/')
-            
+
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
                     ftpHost: env.FTP_HOST,
@@ -127,7 +127,7 @@ export class RepositoryFile implements IRepositoryFile {
                 payload: { remotePath }
             } satisfies IOkResponse
         } finally {
-            
+
         }
     }
 
@@ -251,18 +251,19 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Your folder source not defined!']
         })
 
-        await prismaProxy.$transaction(async (tx) => {
-            await tx.fileHistory.deleteMany({ where: { fileId: id, accountId: account.id } })
-            await tx.fileSharing.deleteMany({ where: { fileId: id, accountId: account.id } })
-            await tx.file.delete({ where: { id, accountId: account.id } })
-        })
-
         const ftp = new FtpLibrary(source.ftpPort)
         try {
             await ftp.connect()
-            const currentDir = await this.folderRepo.realPath(exist.id)
+            const currentDir = await this.folderRepo.realPath(exist.folderId)
             const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
             await ftp.removeFile(lastWorkDir, exist.fileName)
+
+            // delete file in database
+            await prismaProxy.$transaction(async (tx) => {
+                await tx.fileHistory.deleteMany({ where: { fileId: id, accountId: account.id } })
+                await tx.fileSharing.deleteMany({ where: { fileId: id, accountId: account.id } })
+                await tx.file.delete({ where: { id, accountId: account.id } })
+            })
 
             return {
                 statusCode: StatusCodes.OK,
