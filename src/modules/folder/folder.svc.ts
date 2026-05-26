@@ -583,6 +583,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                 source: true,
                 updatedAt: true,
                 createdAt: true,
+                accountId: true,
                 account: {
                     select: {
                         fullname: true,
@@ -601,6 +602,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                 },
                 folderSharings: {
                     select: {
+                        id: true,
                         toAccountId: true,
                         toAccount: {
                             select: {
@@ -629,6 +631,6 @@ export class RepositoryFolder implements IRepositoryFolder {
             }
         })
 
-        return items
+        return items.map(e => ({ ...e, isUpdate: e.accountId === account.id }))
     }
 }

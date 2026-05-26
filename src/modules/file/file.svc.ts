@@ -469,7 +469,7 @@ export class RepositoryFile implements IRepositoryFile {
             }
         })
 
-        return items
+        return items.map(e => ({ ...e, isUpdate: e.accountId === account.id }))
     }
 
     /**
