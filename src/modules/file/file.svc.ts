@@ -387,6 +387,7 @@ export class RepositoryFile implements IRepositoryFile {
                 fileSharings: {
                     select: {
                         id: true,
+                        toAccountId: true,
                         account: {
                             select: {
                                 username: true,
@@ -456,6 +457,7 @@ export class RepositoryFile implements IRepositoryFile {
                 fileSharings: {
                     select: {
                         id: true,
+                        toAccountId: true,
                         toAccount: {
                             select: {
                                 username: true,

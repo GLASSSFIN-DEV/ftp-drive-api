@@ -601,6 +601,7 @@ export class RepositoryFolder implements IRepositoryFolder {
                 },
                 folderSharings: {
                     select: {
+                        toAccountId: true,
                         toAccount: {
                             select: {
                                 fullname: true,
