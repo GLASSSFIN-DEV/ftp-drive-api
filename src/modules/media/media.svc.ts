@@ -119,9 +119,10 @@ export class RepositoryMedia implements IRepositoryMedia {
 
             const res = await Promise.all(mapFile)
             const payload = res.map(e => e.payload).filter(notEmpty)
+            const messages = files.map(e => `Upload file ${e.name} sukses!`)
             return {
                 statusCode: 200,
-                messages: [],
+                messages,
                 payload
             } satisfies IOkResponse
         } finally {
@@ -289,7 +290,8 @@ export class RepositoryMedia implements IRepositoryMedia {
                 }
             }
 
-            return { statusCode: 200, messages: [], payload: records }
+            const messages = files.map(e => `Upload file ${e.name} sukses!`)
+            return { statusCode: 200, messages, payload: records }
         } catch (error) {
             await saga.rollback(ftpLibrary)
             throw error
