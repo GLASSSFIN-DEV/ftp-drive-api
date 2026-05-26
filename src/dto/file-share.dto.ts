@@ -1,5 +1,6 @@
 import { IsDate, IsNotEmpty, IsEnum, IsOptional, IsString } from "class-validator";
 import { SharePermission } from "../generated/prisma/enums.js";
+import { Type } from "class-transformer";
 
 export class FileSharingNewDto {
     @IsString()
@@ -15,5 +16,6 @@ export class FileSharingNewDto {
     permission!: SharePermission;
 
     @IsDate()
+    @Type(() => Date)
     expiredAt!: Date
 }

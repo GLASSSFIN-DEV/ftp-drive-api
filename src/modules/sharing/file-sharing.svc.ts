@@ -79,36 +79,26 @@ export class RepositoryFileSharing implements IRepositoryFileSharing {
             messages: ['Your folder source not defined!']
         })
 
-        const ftp = new FtpLibrary(source.ftpPort)
-        try {
-            await ftp.connect()
-            const link = `code=${v7()}`
-            const remotePath = await this.folderRepo.realPath(findFile.folderId)
-
-            await ftp.findFile(remotePath, findFile.fileName)
-            await prismaProxy.$transaction(async (tx) => {
-                await tx.fileSharing.create({
-                    data: {
-                        fileId: body.fileId,
-                        toAccountId: body.toAccountId,
-                        permission: body.permission,
-                        expiredAt: body.expiredAt,
-                        generatedLink: link,
-                        accountId: account.id
-                    }
-                })
-
-                if (exist) await tx.fileSharing.delete({ where: { id: exist.id } })
+        const link = `code=${v7()}`
+        await prismaProxy.$transaction(async (tx) => {
+            await tx.fileSharing.create({
+                data: {
+                    fileId: body.fileId,
+                    toAccountId: body.toAccountId,
+                    permission: body.permission,
+                    expiredAt: body.expiredAt,
+                    generatedLink: link,
+                    accountId: account.id
+                }
             })
 
+            if (exist) await tx.fileSharing.delete({ where: { id: exist.id } })
+        })
 
-            return {
-                statusCode: StatusCodes.CREATED,
-                messages: ['Sharing created!'],
-                payload: { link }
-            }
-        } finally {
-            ftp.close()
+        return {
+            statusCode: StatusCodes.CREATED,
+            messages: ['Sharing created!'],
+            payload: { link }
         }
     }
 

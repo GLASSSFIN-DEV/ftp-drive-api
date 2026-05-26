@@ -78,11 +78,7 @@ export class RepositoryFolderSharing implements IRepositoryFolderSharing {
             messages: ['Your folder source not defined!']
         })
 
-        const ftp = new FtpLibrary(source.ftpPort)
         const link = `code=${v7()}`
-        const remotePath = await this.folderRepo.realPath(findFolder.id)
-
-        await ftp.ensureDir(remotePath)
         await prismaProxy.$transaction(async (tx) => {
             await tx.folderSharing.create({
                 data: {

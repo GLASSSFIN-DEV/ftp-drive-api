@@ -84,6 +84,9 @@ export class Auth implements IRepositoryAuth {
                 username: true,
                 email: true,
                 fullname: true,
+            },
+            where: {
+                id: { not: c.get('account').id }
             }
         })
 
