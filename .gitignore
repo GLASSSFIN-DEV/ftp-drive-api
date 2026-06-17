@@ -30,3 +30,7 @@ lerna-debug.log*
 
 /src/generated/prisma
 /dist
+*.aux
+*.log
+*.toc
+*.out

@@ -217,8 +217,8 @@ export class RepositoryMedia implements IRepositoryMedia {
 
             const fileName = parts.pop()!
             // Strip the full workingDir prefix instead of just shift()
-            // workingDirSegments = ['anonymous_ikwijaya', 'router']
-            // parts              = ['anonymous_ikwijaya', 'router', 'types']
+            // workingDirSegments = ['john_doe', 'router']
+            // parts              = ['john_doe', 'router', 'types']
             // → segments         = ['types']
             const segments = parts.slice(workingDirSegments.length)
             const ftpPath = `${workingDir}/${segments.join('/')}`.replace(/\/+/g, '/')

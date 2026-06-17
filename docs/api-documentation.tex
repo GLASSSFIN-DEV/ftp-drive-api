@@ -1,0 +1,1462 @@
+\documentclass[12pt,a4paper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\newcolumntype{D}{>{\raggedright\arraybackslash}p{8.5cm}}
+\newcolumntype{E}{>{\raggedright\arraybackslash}p{7cm}}
+\newcolumntype{F}{>{\raggedright\arraybackslash}p{6cm}}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{amsmath}
+\usepackage{lmodern}
+\usepackage{parskip}
+\usepackage[titles]{tocloft}
+
+% ─── Page Geometry ────────────────────────────────────────────────────────────
+\geometry{
+  a4paper,
+  top=2.5cm,
+  bottom=2.5cm,
+  left=2.5cm,
+  right=2.5cm,
+  headheight=15pt
+}
+
+% ─── Colors ───────────────────────────────────────────────────────────────────
+\definecolor{primary}{RGB}{37, 99, 235}
+\definecolor{secondary}{RGB}{15, 23, 42}
+\definecolor{accent}{RGB}{99, 102, 241}
+\definecolor{success}{RGB}{22, 163, 74}
+\definecolor{warning}{RGB}{234, 88, 12}
+\definecolor{danger}{RGB}{220, 38, 38}
+\definecolor{muted}{RGB}{100, 116, 139}
+\definecolor{codebg}{RGB}{248, 250, 252}
+\definecolor{codeborder}{RGB}{226, 232, 240}
+\definecolor{getcolor}{RGB}{59, 130, 246}
+\definecolor{postcolor}{RGB}{16, 185, 129}
+\definecolor{putcolor}{RGB}{245, 158, 11}
+\definecolor{deletecolor}{RGB}{239, 68, 68}
+
+% ─── Hyperref Setup ───────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=primary,
+  urlcolor=primary,
+  citecolor=primary,
+  pdftitle={FTP Drive API Documentation},
+  pdfauthor={School/Team},
+  pdfsubject={API Reference},
+}
+
+% ─── Header / Footer ──────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{muted}{FTP Drive API}}
+\fancyhead[R]{\small\textcolor{muted}{\leftmark}}
+\fancyfoot[C]{\small\textcolor{muted}{\thepage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% ─── Section Title Styles ─────────────────────────────────────────────────────
+\titleformat{\section}
+  {\color{secondary}\Large\bfseries}
+  {\thesection}{1em}{}[\color{primary}\titlerule]
+
+\titleformat{\subsection}
+  {\color{secondary}\large\bfseries}
+  {\thesubsection}{1em}{}
+
+\titleformat{\subsubsection}
+  {\color{secondary}\normalsize\bfseries}
+  {\thesubsubsection}{1em}{}
+
+% ─── Code Listing Style ───────────────────────────────────────────────────────
+\lstdefinestyle{jsonStyle}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  commentstyle=\color{muted},
+  frame=single,
+  rulecolor=\color{codeborder},
+  keepspaces=true,
+  keywordstyle=\color{primary}\bfseries,
+  stringstyle=\color{success},
+  numberstyle=\tiny\color{muted},
+  numbers=none,
+  showspaces=false,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=5pt,
+  xrightmargin=5pt,
+  aboveskip=6pt,
+  belowskip=6pt,
+}
+
+\lstset{style=jsonStyle}
+
+% ─── Custom Boxes ─────────────────────────────────────────────────────────────
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{notebox}[1][]{
+  enhanced,
+  colback=blue!5!white,
+  colframe=primary,
+  fonttitle=\bfseries,
+  title=Note,
+  #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+  enhanced,
+  colback=orange!5!white,
+  colframe=warning,
+  fonttitle=\bfseries,
+  title=Warning,
+  #1
+}
+
+% ─── HTTP Method Commands ─────────────────────────────────────────────────────
+\newcommand{\httpget}[1]{%
+  \colorbox{getcolor!20}{\textcolor{getcolor}{\textbf{\small GET}}}~\texttt{#1}%
+}
+\newcommand{\httppost}[1]{%
+  \colorbox{postcolor!20}{\textcolor{postcolor}{\textbf{\small POST}}}~\texttt{#1}%
+}
+\newcommand{\httpput}[1]{%
+  \colorbox{putcolor!20}{\textcolor{putcolor}{\textbf{\small PUT}}}~\texttt{#1}%
+}
+\newcommand{\httpdelete}[1]{%
+  \colorbox{deletecolor!20}{\textcolor{deletecolor}{\textbf{\small DELETE}}}~\texttt{#1}%
+}
+
+% ─── Misc ─────────────────────────────────────────────────────────────────────
+\newcommand{\required}{\textcolor{danger}{\textbf{*}}}
+\newcommand{\optional}{\textcolor{muted}{\textit{opt}}}
+
+% ══════════════════════════════════════════════════════════════════════════════
+%  DOCUMENT
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Title Page ───────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\color{primary}\rule{\linewidth}{2pt}}
+  \vspace{0.5cm}
+
+  {\Huge\bfseries\color{secondary} FTP Drive API}\\[0.4cm]
+  {\Large\color{muted} Technical Reference Documentation}\\[0.2cm]
+  {\normalsize\color{muted} Version 1.0 \textemdash{} June 2026}
+
+  \vspace{0.5cm}
+  {\color{primary}\rule{\linewidth}{2pt}}
+
+  \vspace{2cm}
+
+  \begin{tcolorbox}[colback=primary!5,colframe=primary,width=0.85\linewidth]
+    \centering
+    \textbf{Project:} FTP-Based Cloud Drive Storage API\\
+    \textbf{Framework:} Hono (TypeScript / Node.js)\\
+    \textbf{Database:} PostgreSQL via Prisma ORM\\
+    \textbf{Auth:} Google OAuth 2.0 + JWT (HS256)\\
+    \textbf{Storage:} Multi-site FTP (basic-ftp)\\
+    \textbf{Jobs:} Inngest Background Functions
+  \end{tcolorbox}
+
+  \vfill
+
+  {\small\color{muted}
+    Confidential \textemdash{} Internal Use Only\\
+    \textit{user@email.sch.id}
+  }
+\end{titlepage}
+
+% ─── Table of Contents ────────────────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Overview}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Introduction}
+
+The \textbf{FTP Drive API} is a backend service that provides cloud-storage functionality backed by one or more FTP servers. It exposes a RESTful HTTP API under the \texttt{/v1} prefix, enabling authenticated clients to manage folders, upload/download files, share resources, and administer the system. Authentication is handled via Google OAuth 2.0 combined with stateful JWT sessions stored in the database.
+
+\subsection{Technology Stack}
+
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+\textbf{Component} & \textbf{Technology} \\
+\midrule
+Runtime      & Node.js (ESM) \\
+Language     & TypeScript 5.x \\
+Web Framework & Hono 4.x \\
+ORM          & Prisma 7.x \\
+Database     & PostgreSQL (schema: \texttt{drive}) \\
+FTP Client   & basic-ftp 6.x \\
+Auth         & Google OAuth 2.0 + JWT (HS256) \\
+Background Jobs & Inngest 4.x \\
+Validation   & class-validator + class-transformer \\
+Logging      & Winston \\
+Observability & OpenTelemetry (Traceloop instrumentation) \\
+\bottomrule
+\end{tabularx}
+\caption{Technology stack}
+\end{table}
+
+\subsection{Base URL}
+
+All endpoints listed in this document are relative to the API base URL and the version prefix \texttt{/v1}:
+
+\begin{lstlisting}
+https://<API_URL>/v1/<endpoint>
+\end{lstlisting}
+
+\subsection{Business Rules}
+
+The following rules govern the system behaviour:
+
+\begin{enumerate}[label=\arabic*.]
+  \item There are \textbf{3 FTP service sites}, each identified by a numeric \texttt{siteId}. Files are stored on a specific site determined at upload time.
+  \item Every file upload stores the actual bytes on the designated FTP site.
+  \item \textbf{Delete is a hard-delete}: removing a file or folder deletes both the database record and the FTP artefact.
+  \item Users can select multiple folders at once during upload, and the system will recursively create all necessary parent directories on the FTP server before writing any file.
+  \item Login is exclusively via Google (\texttt{gmail}) — no local passwords are stored.
+  \item Communication with the FTP server is \textbf{encrypted}.
+  \item Uploaded files/folders are assigned UNIX permissions (\texttt{chmod}) matching the currently authenticated user.
+  \item \textbf{Folder sharing} propagates \emph{bottom-up}: sharing a folder automatically shares all its ancestors.
+  \item \textbf{File sharing} propagates \emph{top-down}: sharing a file implicitly shares its containing folder path.
+\end{enumerate}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Authentication}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Authentication Flow}
+
+The API uses Google OAuth 2.0 for identity and a stateful JWT mechanism for API access control. The flow is:
+
+\begin{enumerate}[label=\arabic*.]
+  \item Client redirects the user to \texttt{GET /v1/oauth/google}.
+  \item The API generates a Google OAuth consent URL and returns a redirect.
+  \item Google redirects back to \texttt{GET /v1/oauth/google/callback} with an authorisation code.
+  \item The API exchanges the code for tokens, fetches the Google user profile, upserts the account in the database, and issues a JWT \texttt{accessToken} and \texttt{refreshToken}.
+  \item The client includes the \texttt{accessToken} in subsequent requests as a \texttt{Bearer} token.
+  \item The active session is stored in the \texttt{Session} table. Logout or token expiry invalidates the session.
+\end{enumerate}
+
+\subsection{Authorization Header}
+
+All protected endpoints require:
+
+\begin{lstlisting}
+Authorization: Bearer <accessToken>
+\end{lstlisting}
+
+The \texttt{Guard.validate()} middleware:
+\begin{itemize}
+  \item Verifies the JWT signature using \texttt{HS256} and the \texttt{JWT\_SECRET} env variable.
+  \item Confirms the account is \texttt{ACTIVE} in the database.
+  \item Confirms the session record exists and is \texttt{ACTIVE} (replay-attack protection).
+  \item Injects the \texttt{account} context object into the Hono request context.
+\end{itemize}
+
+\subsection{Auth Endpoints}
+
+\subsubsection{\httpget{/v1/oauth/google}}
+
+Initiates Google OAuth handshake. Redirects the browser to Google's consent page.
+
+\textbf{Auth required:} No
+
+\textbf{Response:} \texttt{302 Redirect} $\rightarrow$ Google consent URL
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/oauth/google/callback}}
+
+Handles the OAuth callback from Google.
+
+\textbf{Auth required:} No
+
+\textbf{Query Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Parameter} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{code} & string & OAuth authorisation code from Google \\
+\texttt{state} & string & CSRF state token \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "accessToken":  "<jwt>",
+  "refreshToken": "<jwt>",
+  "expireAt":     "30m",
+  "basePath":     "john_doe"
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/auth/me}}
+
+Returns the currently authenticated account.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "id":       "<uuid>",
+  "username": "john.doe@gmail.com",
+  "fullname": "John Doe",
+  "email":    "john.doe@gmail.com",
+  "provider": "google",
+  "rbacId":   "<uuid|null>",
+  "rbacName": "admin",
+  "rbac":     { ... },
+  "homePath": "john_doe"
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/auth/users}}
+
+Lists all accounts in the system (excluding the caller).
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+[
+  {
+    "id":       "<uuid>",
+    "username": "jane.doe@gmail.com",
+    "fullname": "Jane Doe",
+    "email":    "jane.doe@gmail.com"
+  }
+]
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/auth/refresh}}
+
+Issues a new \texttt{accessToken} and \texttt{refreshToken}, creating a new session entry.
+
+\textbf{Auth required:} Yes (existing valid session)
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "accessToken":  "<jwt>",
+  "refreshToken": "<jwt>",
+  "expireAt":     "30m"
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/auth/logout}}
+
+Invalidates all active sessions for the authenticated user.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "messages":   ["Logged out!"]
+}
+\end{lstlisting}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Folder Management}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Folders form a recursive tree structure in the database. Each folder belongs to an account and optionally has a parent folder. The \texttt{source} JSON field stores the FTP coordinates (host, port, remote path). Folder deletion is hard-delete: the folder and all its descendants are removed from both the database and the FTP server.
+
+\subsection{Endpoints}
+
+\subsubsection{\httppost{/v1/folder}}
+
+Creates a new folder.
+
+\textbf{Auth required:} Yes
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{folderName} & string  & \required & Display name of the folder \\
+\texttt{parentId}   & string (UUID) & \optional & Parent folder UUID. Root if omitted \\
+\texttt{label}      & string[]& \optional & Up to 20 classification tags \\
+\texttt{siteId}     & number  & \required & FTP site identifier (positive integer) \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 201:}
+\begin{lstlisting}
+{
+  "statusCode": 201,
+  "messages":   ["Folder Created"],
+  "payload":    { "remotePath": "john_doe/projects/my-folder" }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpput{/v1/folder/:id}}
+
+Renames or moves an existing folder. Cascades the physical rename on the FTP server and updates all child paths.
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & Folder identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{folderName} & string & \required & New folder name \\
+\texttt{parentId}   & string (UUID) & \optional & New parent folder UUID \\
+\texttt{label}      & string[] & \optional & Updated labels (max 20) \\
+\texttt{siteId}     & number & \required & FTP site identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 201:}
+\begin{lstlisting}
+{
+  "statusCode": 201,
+  "messages":   ["Folder Updated"],
+  "payload":    { "lastWorkDir": "...", "newWorkDir": "..." }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpdelete{/v1/folder/:id}}
+
+Hard-deletes a folder and all its descendants from both the database and the FTP server.
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & Folder identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "messages":   ["Folder Deleted"]
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/folders}}
+
+Returns a paginated list of all folders.
+
+\textbf{Auth required:} Yes
+
+\textbf{Query Parameters:}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{page}     & number & \optional & Page number (default: 1) \\
+\texttt{pageSize} & number & \optional & Items per page (default: 25) \\
+\texttt{keyword}  & string & \optional & Case-insensitive name filter \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "items": [
+    {
+      "id":         "<uuid>",
+      "folderName": "Projects",
+      "parentId":   null,
+      "accountId":  "<uuid>",
+      "label":      ["work", "2026"],
+      "createdAt":  "2026-06-17T00:00:00.000Z",
+      "updatedAt":  null,
+      "source":     { "ftpHost": "...", "ftpPort": 1, "remotePath": "..." }
+    }
+  ],
+  "pagination": { "page": 1, "pageSize": 25, "total": 42 },
+  "rbac":       { ... }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/folder/:id}}
+
+Retrieves a single folder by its UUID.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:} Same shape as a single item in the \texttt{/v1/folders} list.
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/folder/:id/real-path}}
+
+Returns the resolved FTP path string for the folder (walks the parent chain).
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "payload":    "parent-name/child-name/leaf-name"
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/my-folders}}
+
+Returns all folders owned by the authenticated user (no pagination).
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:} Array of folder objects (same shape as list items).
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{File Management}
+% ══════════════════════════════════════════════════════════════════════════════
+
+File records in the database map to physical files stored on an FTP server. Every file belongs to exactly one folder. The unique constraint is \texttt{(folderId, fileName)}. Version history is recorded on every rename/move operation.
+
+\subsection{Endpoints}
+
+\subsubsection{\httpput{/v1/file/:id}}
+
+Renames or moves an existing file. Performs the FTP rename first, then updates the database; rolls back the FTP rename if the DB transaction fails.
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & File identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{folderId}  & string & \required & Target folder UUID \\
+\texttt{fileName}  & string & \required & New file name \\
+\texttt{siteId}    & number & \required & FTP site identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 201:}
+\begin{lstlisting}
+{
+  "statusCode": 201,
+  "messages":   ["File renamed"],
+  "payload":    { "lastWorkDir": "...", "newWorkDir": "..." }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpdelete{/v1/file/:id}}
+
+Hard-deletes a file from the FTP server and removes all related database records (file, sharing links, version history).
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & File identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "messages":   ["File Deleted"]
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/files}}
+
+Returns a paginated list of files. Supports filtering by keyword, date range, and owner.
+
+\textbf{Auth required:} Yes
+
+\textbf{Query Parameters:}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{page}      & number & \optional & Page number (default: 1) \\
+\texttt{pageSize}  & number & \optional & Items per page (default: 25) \\
+\texttt{keyword}   & string & \optional & Case-insensitive file name filter \\
+\texttt{startDate} & ISO date & \optional & Created-at lower bound (inclusive) \\
+\texttt{endDate}   & ISO date & \optional & Created-at upper bound (exclusive) \\
+\texttt{accountId} & UUID & \optional & Filter by owner account \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "items": [
+    {
+      "id":        "<uuid>",
+      "fileName":  "report.pdf",
+      "fileSize":  204800,
+      "fileType":  "application/pdf",
+      "folderId":  "<uuid>",
+      "accountId": "<uuid>",
+      "createdAt": "2026-06-17T00:00:00.000Z",
+      "updatedAt": null,
+      "source":    { "ftpHost": "...", "ftpPort": 1, "remotePath": "..." },
+      "folder":    { "folderName": "Documents" },
+      "account":   { "username": "...", "fullname": "..." },
+      "fileSharings": [ { "id": "...", "account": { ... } } ],
+      "action":    { "isUpdate": true, "isDelete": true, "isSharing": true }
+    }
+  ],
+  "pagination": { "page": 1, "pageSize": 25, "total": 10 },
+  "rbac":       { ... }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/file/:id}}
+
+Retrieves a single file by UUID.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:} Same shape as a single item in the \texttt{/v1/files} list, with sharing targets included.
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/my-files/:id}}
+
+Lists all files inside the specified folder that belong to the authenticated user. Supports keyword and date range filters via query string (\texttt{keyword}, \texttt{startDate}, \texttt{endDate}).
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & Folder identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:} Array of file objects with an added boolean \texttt{isUpdate} flag.
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/file/history/:id}}
+
+Returns the complete version history of a file.
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & File identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:}
+\begin{lstlisting}
+[
+  {
+    "id":        "<uuid>",
+    "version":   1,
+    "json":      { "folderId": "...", "fileName": "old-name.pdf", "siteId": 1 },
+    "createdAt": "2026-06-01T00:00:00.000Z",
+    "account":   { "username": "...", "fullname": "..." }
+  }
+]
+\end{lstlisting}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Media Upload \& Streaming}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The media module handles the actual binary transfer between the client and the FTP server. It supports single-file upload, bulk folder upload, and streaming download.
+
+\subsection{Endpoints}
+
+\subsubsection{\httppost{/v1/media/upload/folder}}
+
+Bulk-uploads files for an entire folder hierarchy. The system creates all necessary parent directories on the FTP server and then calls \texttt{newFile} for each file. Uses \texttt{multipart/form-data}.
+
+\textbf{Auth required:} Yes
+
+\textbf{Query Parameters:}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{siteId}   & string & \required & FTP site identifier \\
+\texttt{folderId} & string (UUID) & \optional & Target folder UUID. Root if omitted \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Request Body:} \texttt{multipart/form-data} — one or more files in the \texttt{files} field, preserving relative directory paths in file names.
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "messages":   ["Folder uploaded"],
+  "payload":    { "uploaded": 5, "failed": 0 }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httppost{/v1/media/upload/:id}}
+
+Uploads a single file to the folder identified by \texttt{:id}. Saves the binary to the FTP server, then upserts the file record in the database.
+
+\textbf{Auth required:} Yes
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id} & UUID & Destination folder identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Request Body:} \texttt{multipart/form-data} — single file in the \texttt{file} field.
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "messages":   ["File uploaded"],
+  "payload":    { "remotePath": "john_doe/documents" }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httppost{/v1/media/stream}}
+
+Streams a file from the FTP server to the client. The response is a binary stream with the appropriate \texttt{Content-Type} and \texttt{Content-Disposition} headers.
+
+\textbf{Auth required:} Yes
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{fileName}   & string & \required & Name of the file to stream \\
+\texttt{remotePath} & string & \required & FTP directory path \\
+\texttt{site}       & number & \required & FTP site identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response:} Binary file stream with MIME type resolved from extension.
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/media/site}}
+
+Returns the list of available FTP site configurations visible to the authenticated user.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "statusCode": 200,
+  "payload":    [
+    { "siteId": 1, "label": "Primary Site" },
+    { "siteId": 2, "label": "Backup Site" }
+  ]
+}
+\end{lstlisting}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Sharing}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Resources can be shared between accounts with configurable permissions and optional expiry. Sharing records include a generated link for direct access. Two independent sharing models exist: \emph{file sharing} and \emph{folder sharing}.
+
+\begin{warningbox}
+  Sharing permission propagation follows the direction defined in the business rules:
+  folder sharing impacts bottom-up (ancestors are also accessible), while file sharing impacts top-down (the parent folder path becomes accessible).
+\end{warningbox}
+
+\subsection{File Sharing}
+
+\subsubsection{\httppost{/v1/sharing/file}}
+
+Creates a new file-sharing record.
+
+\textbf{Auth required:} Yes
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{fileId}      & string (UUID) & \required & File to share \\
+\texttt{toAccountId} & string (UUID) & \required & Recipient account UUID \\
+\texttt{permission}  & enum & \optional & \texttt{READ\_ONLY} (default) or \texttt{READ\_WRITE} \\
+\texttt{expiredAt}   & ISO date & \required & Sharing expiry date/time \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 201:}
+\begin{lstlisting}
+{
+  "statusCode":    201,
+  "messages":      ["File sharing created"],
+  "payload":       {
+    "id":            "<uuid>",
+    "generatedLink": "https://..."
+  }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpdelete{/v1/sharing/file/:id}}
+
+Removes a file-sharing record.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{ "statusCode": 200, "messages": ["File sharing removed"] }
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/sharing/file/:id}}
+
+Retrieves details of a file-sharing record.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "id":            "<uuid>",
+  "fileId":        "<uuid>",
+  "toAccountId":   "<uuid>",
+  "permission":    "READ_ONLY",
+  "expiredAt":     "2026-12-31T23:59:59.000Z",
+  "generatedLink": "https://...",
+  "createdAt":     "2026-06-17T00:00:00.000Z"
+}
+\end{lstlisting}
+
+\subsection{Folder Sharing}
+
+\subsubsection{\httppost{/v1/sharing/folder}}
+
+Creates a new folder-sharing record.
+
+\textbf{Auth required:} Yes
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{folderId}    & string (UUID) & \required & Folder to share \\
+\texttt{toAccountId} & string (UUID) & \required & Recipient account UUID \\
+\texttt{permission}  & enum & \optional & \texttt{READ\_ONLY} (default) or \texttt{READ\_WRITE} \\
+\texttt{expiredAt}   & ISO date & \required & Sharing expiry date/time \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 201:}
+\begin{lstlisting}
+{
+  "statusCode":    201,
+  "messages":      ["Folder sharing created"],
+  "payload":       {
+    "id":            "<uuid>",
+    "generatedLink": "https://..."
+  }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpdelete{/v1/sharing/folder/:id}}
+
+Removes a folder-sharing record.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{ "statusCode": 200, "messages": ["Folder sharing removed"] }
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/sharing/folder/:id}}
+
+Retrieves details of a folder-sharing record.
+
+\textbf{Auth required:} Yes
+
+\textbf{Response 200:} Same shape as file-sharing detail but with \texttt{folderId} instead of \texttt{fileId}.
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Debug Endpoints}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{warningbox}
+  Debug endpoints are \textbf{blocked in production}. Requests to these routes when \texttt{NODE\_ENV=production} are silently redirected to \texttt{/}.
+\end{warningbox}
+
+\subsection{Endpoints}
+
+\subsubsection{\httppost{/v1/debug/ftp/:siteId}}
+
+Opens an FTP connection to the specified site and checks whether a remote path exists.
+
+\textbf{Path Parameters:}
+
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Param} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{siteId} & integer & Numeric FTP site identifier \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Request Body (JSON):}
+
+\begin{tabularx}{\linewidth}{llcX}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{remotePath} & string & \required & Remote path to inspect on the FTP server \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Response 200:} Raw FTP directory listing for the given path.
+
+\vspace{0.5em}
+\subsubsection{\httpget{/v1/debug/orphans}}
+
+Runs a reconciliation check and returns a summary of orphaned records — database entries with no corresponding FTP artefact, and FTP artefacts with no database record.
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "summary": {
+    "dbFoldersMissingOnFtp":  3,
+    "ftpFoldersMissingInDb":  1,
+    "dbFilesMissingOnFtp":    2,
+    "ftpFilesMissingInDb":    0
+  },
+  "orphans": { ... }
+}
+\end{lstlisting}
+
+\vspace{0.5em}
+\subsubsection{\httpdelete{/v1/debug/orphans}}
+
+Runs the reconciliation check and \textbf{deletes all orphans}: marks orphaned DB records as \texttt{DEAD} and removes orphaned FTP artefacts.
+
+\textbf{Response 200:}
+\begin{lstlisting}
+{
+  "deleted": {
+    "dbFolders":  3,
+    "dbFiles":    2,
+    "ftpFolders": 1,
+    "ftpFiles":   0
+  }
+}
+\end{lstlisting}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Data Models}
+% ══════════════════════════════════════════════════════════════════════════════
+
+All models live in the PostgreSQL \texttt{drive} schema. Timestamps are stored in UTC.
+
+\subsection{Enumerations}
+
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Enum} & \textbf{Values} & \textbf{Description} \\
+\midrule
+\texttt{RecordStatus}   & \texttt{ACTIVE}, \texttt{NOT\_ACTIVE}, \texttt{DEAD} & Soft-delete lifecycle for most entities \\
+\texttt{SharePermission} & \texttt{READ\_ONLY}, \texttt{READ\_WRITE} & Access level granted in sharing records \\
+\bottomrule
+\end{tabularx}
+\caption{Database enumerations}
+\end{table}
+
+\subsection{Account}
+
+Represents an authenticated user. Created or updated on first Google OAuth login.
+
+\begin{longtable}{llD}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id}           & UUID (PK)     & Primary key \\
+\texttt{dirId}        & UUID?         & Linked directorate \\
+\texttt{username}     & string (UNIQUE) & Google email address \\
+\texttt{fullname}     & string?       & Display name from Google profile \\
+\texttt{email}        & string?       & Email (may differ from username) \\
+\texttt{provider}     & string        & OAuth provider (\texttt{google}) \\
+\texttt{rbacId}       & UUID?         & Assigned RBAC role \\
+\texttt{accountInfo}  & JSON?         & Raw Google profile data \\
+\texttt{quota}        & int           & Storage quota in bytes (default 0) \\
+\texttt{createdAt}    & DateTime      & Account creation timestamp \\
+\texttt{updatedAt}    & DateTime?     & Last update timestamp \\
+\texttt{recordStatus} & RecordStatus  & Lifecycle status (default \texttt{NOT\_ACTIVE}) \\
+\bottomrule
+\caption{Account model}
+\end{longtable}
+
+\subsection{Session}
+
+Stores active JWT tokens. Each login or refresh creates a new session record.
+
+\begin{longtable}{llD}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id}           & UUID (PK)    & Primary key \\
+\texttt{accountId}    & UUID (FK)    & Owner account \\
+\texttt{appCode}      & string       & Application identifier (default \texttt{main\_app}) \\
+\texttt{jwtHash}      & string       & The raw JWT access token (used for replay prevention) \\
+\texttt{recordStatus} & RecordStatus & \texttt{ACTIVE} = valid session \\
+\texttt{createdAt}    & DateTime     & Creation timestamp \\
+\bottomrule
+\caption{Session model}
+\end{longtable}
+
+\subsection{Folder}
+
+Represents a directory in the virtual drive, backed by a physical FTP directory.
+
+\begin{longtable}{llD}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id}           & UUID (PK)    & Primary key \\
+\texttt{parentId}     & UUID?        & Self-referential parent (null = root) \\
+\texttt{accountId}    & UUID (FK)    & Owner account \\
+\texttt{folderName}   & string       & Display/directory name \\
+\texttt{source}       & JSON         & FTP coordinates: \texttt{ftpHost}, \texttt{ftpPort}, \texttt{remotePath} \\
+\texttt{label}        & JSON[]       & Classification tags \\
+\texttt{createdAt}    & DateTime     & Creation timestamp \\
+\texttt{updatedAt}    & DateTime?    & Last update timestamp \\
+\texttt{recordStatus} & RecordStatus & Lifecycle status \\
+\bottomrule
+\caption{Folder model}
+\end{longtable}
+
+\subsection{File}
+
+Represents a single file. Unique per \texttt{(folderId, fileName)}.
+
+\begin{longtable}{llD}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id}           & UUID (PK)    & Primary key \\
+\texttt{folderId}     & UUID (FK)    & Containing folder \\
+\texttt{accountId}    & UUID (FK)    & Owner account \\
+\texttt{fileName}     & string       & File name (unique per folder) \\
+\texttt{fileHash}     & string?      & MD5 hash from FTP \texttt{XMD5} command \\
+\texttt{fileSize}     & int          & Size in bytes \\
+\texttt{fileType}     & string       & MIME type \\
+\texttt{source}       & JSON         & FTP coordinates \\
+\texttt{createdAt}    & DateTime     & Upload timestamp \\
+\texttt{updatedAt}    & DateTime?    & Last modification timestamp \\
+\texttt{recordStatus} & RecordStatus & Lifecycle status \\
+\bottomrule
+\caption{File model}
+\end{longtable}
+
+\subsection{FileHistory}
+
+Records every rename/move operation on a file for audit and rollback purposes.
+
+\begin{longtable}{llD}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id}        & UUID (PK) & Primary key \\
+\texttt{fileId}    & UUID (FK) & Associated file \\
+\texttt{accountId} & UUID (FK) & Account that made the change \\
+\texttt{json}      & JSON      & Snapshot of the change DTO \\
+\texttt{version}   & int       & Monotonically increasing version counter \\
+\texttt{createdAt} & DateTime  & Change timestamp \\
+\bottomrule
+\caption{FileHistory model}
+\end{longtable}
+
+\subsection{FolderSharing / FileSharing}
+
+Both sharing models have identical structure, differing only in the resource they reference.
+
+\begin{longtable}{llD}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{id}            & UUID (PK)       & Primary key \\
+\texttt{folderId / fileId} & UUID (FK)   & Shared resource \\
+\texttt{accountId}     & UUID (FK)       & Sharing owner \\
+\texttt{toAccountId}   & UUID (FK)       & Sharing recipient \\
+\texttt{permission}    & SharePermission & \texttt{READ\_ONLY} or \texttt{READ\_WRITE} \\
+\texttt{expiredAt}     & DateTime?       & Optional expiry \\
+\texttt{generatedLink} & string          & Public access link \\
+\texttt{createdAt}     & DateTime        & Creation timestamp \\
+\texttt{recordStatus}  & RecordStatus    & Lifecycle status \\
+\bottomrule
+\caption{Sharing models}
+\end{longtable}
+
+\subsection{Trace / TraceSpan}
+
+Observability tables populated by the OpenTelemetry middleware.
+
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{Trace.id}             & string      & UUID v7 trace ID \\
+\texttt{Trace.url}            & string      & Request URL \\
+\texttt{Trace.method}         & string      & HTTP method \\
+\texttt{Trace.status}         & int         & HTTP response status code \\
+\texttt{Trace.responseTimeMs} & int         & Response time in milliseconds \\
+\texttt{TraceSpan.traceId}    & string?     & Parent trace ID \\
+\texttt{TraceSpan.context}    & string      & Span name/context label \\
+\texttt{TraceSpan.durationMs} & int         & Span duration in milliseconds \\
+\bottomrule
+\end{tabularx}
+\caption{Observability models}
+\end{table}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Error Handling}
+% ══════════════════════════════════════════════════════════════════════════════
+
+All errors follow a consistent JSON envelope:
+
+\begin{lstlisting}
+{
+  "errCode":    "FILE_NOT_FOUND",
+  "statusCode": 404,
+  "messages":   ["Selected file not found!"]
+}
+\end{lstlisting}
+
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{errCode} & \textbf{HTTP} & \textbf{Meaning} \\
+\midrule
+\texttt{UNAUTHORIZED}       & 401 & Missing, invalid, or expired JWT/session \\
+\texttt{GUARD\_ERROR}       & 500 & Unexpected error in authentication middleware \\
+\texttt{VALIDATION\_ERROR}  & 422 & Request DTO validation failed \\
+\texttt{ACCOUNT\_NOT\_FOUND}& 404 & Account referenced does not exist \\
+\texttt{FOLDER\_NOT\_FOUND} & 404 & Folder not found or not owned by caller \\
+\texttt{FILE\_NOT\_FOUND}   & 404 & File not found or not owned by caller \\
+\texttt{FILE\_EXIST}        & 409 & Duplicate file name in the same folder \\
+\texttt{SOURCE\_NOT\_FOUND} & 404 & File record has no FTP source metadata \\
+\bottomrule
+\end{tabularx}
+\caption{Known error codes}
+\end{table}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Environment Configuration}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The application reads configuration from environment variables validated by \texttt{envalid}. All variables marked \textbf{required} have no default and must be set before startup.
+
+\begin{longtable}{llcE}
+\toprule
+\textbf{Variable} & \textbf{Type} & \textbf{Req?} & \textbf{Description} \\
+\midrule
+\texttt{APP\_NAME}                & string  & \optional & Application name (default: \texttt{DriveAPI}) \\
+\texttt{NODE\_ENV}                & enum    & \optional & \texttt{development} | \texttt{production} | \texttt{staging} | \texttt{test} \\
+\texttt{NODE\_REJECT\_UNAUTHORIZE}& bool    & \optional & Reject unauthorised TLS certs (default: \texttt{false}) \\
+\texttt{LOG}                      & enum    & \optional & \texttt{all} | \texttt{none} | \texttt{prisma} | \texttt{ftp} (default: \texttt{none}) \\
+\texttt{PORT}                     & number  & \optional & HTTP listen port (default: \texttt{9000}) \\
+\texttt{API\_URL}                 & string  & \optional & Public base URL (default: \texttt{localhost}) \\
+\texttt{JWT\_SECRET}              & string  & \optional & HS256 signing secret (default: \texttt{jwt-secret} — \textbf{change in prod!}) \\
+\texttt{JWT\_EXPIRE}              & string  & \optional & Token lifetime (default: \texttt{30m}) \\
+\texttt{E\_SALT}                  & string  & \required & Encryption salt for FTP credentials \\
+\texttt{DATABASE\_URL}            & string  & \optional & PostgreSQL connection string \\
+\texttt{FTP\_HOST}                & string  & \optional & FTP server hostname (default: \texttt{localhost}) \\
+\texttt{FTP\_USERNAME}            & string  & \required & FTP authentication username \\
+\texttt{FTP\_PASSWORD}            & string  & \required & FTP authentication password \\
+\texttt{FTP\_CONFIG}              & mixed   & \optional & FTP connection mode: \texttt{implicit} (default) | \texttt{explicit} | \texttt{true}/\texttt{false} \\
+\texttt{GOOGLE\_CLIENT\_ID}       & string  & \required & Google OAuth 2.0 client ID \\
+\texttt{GOOGLE\_CLIENT\_SECRET}   & string  & \required & Google OAuth 2.0 client secret \\
+\texttt{GOOGLE\_REDIRECT\_URL}    & string  & \required & Registered OAuth callback URL \\
+\bottomrule
+\caption{Environment variables}
+\end{longtable}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Background Jobs}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Background tasks are handled by \textbf{Inngest}, an event-driven job platform. The Inngest serve route is registered at \texttt{/v1/api/inngest}.
+
+\subsection{Orphan Reconciliation}
+
+The \texttt{check-orphans} job compares every folder and file record in the database against the actual FTP directory tree:
+
+\begin{itemize}
+  \item \textbf{DB folders missing on FTP} — records that have no matching directory on any FTP site.
+  \item \textbf{FTP folders missing in DB} — directories on the FTP server with no corresponding database record.
+  \item \textbf{DB files missing on FTP} — file records whose physical FTP file has been deleted.
+  \item \textbf{FTP files missing in DB} — FTP files with no database record.
+\end{itemize}
+
+The \texttt{reconcile-orphaned-files} Inngest function can be triggered to automatically clean up these discrepancies.
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Middleware Pipeline}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Requests pass through the following middleware layers in order:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Context Storage} (\texttt{hono/context-storage}) — makes the Hono context available globally within a request.
+  \item \textbf{Trace ID injection} — generates a UUID v7 trace ID and sets the \texttt{x-trace-id} response header.
+  \item \textbf{CORS} (\texttt{hono/cors}) — enables cross-origin resource sharing.
+  \item \textbf{Telemetry} (\texttt{useTelemetry}) — records request/response metrics and spans to the \texttt{Trace} and \texttt{TraceSpan} tables via OpenTelemetry.
+  \item \textbf{Secure Headers} (\texttt{hono/secure-headers}) — adds OWASP-recommended security headers.
+  \item \textbf{Pretty JSON} (\texttt{hono/pretty-json}) — formats JSON responses when the client sends \texttt{?pretty=1}.
+  \item \textbf{Request Validator} (\texttt{Validate.for}) — validates the request body, query, or path params against the specified DTO class using \texttt{class-validator}.
+  \item \textbf{Auth Guard} (\texttt{Guard.validate}) — verifies the JWT and active session; injects the \texttt{account} context variable.
+  \item \textbf{RBAC Validator} (\texttt{rbac.validator}) — optional role-based access control check.
+  \item \textbf{Error Handler} (\texttt{errorHandler}) — catches \texttt{HttpException} instances and all uncaught errors, returning a structured JSON error response.
+\end{enumerate}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Endpoint Summary}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{longtable}{lllF}
+\toprule
+\textbf{Method} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+\midrule
+\multicolumn{4}{l}{\textit{OAuth \& Auth}} \\
+\midrule
+GET    & /v1/oauth/google              & No  & Initiate Google OAuth flow \\
+GET    & /v1/oauth/google/callback     & No  & Google OAuth callback \\
+GET    & /v1/auth/me                   & Yes & Get current user \\
+GET    & /v1/auth/users                & Yes & List all users \\
+GET    & /v1/auth/refresh              & Yes & Refresh access token \\
+GET    & /v1/auth/logout               & Yes & Invalidate session \\
+\midrule
+\multicolumn{4}{l}{\textit{Folders}} \\
+\midrule
+POST   & /v1/folder                    & Yes & Create folder \\
+PUT    & /v1/folder/:id                & Yes & Rename / move folder \\
+DELETE & /v1/folder/:id                & Yes & Hard-delete folder \\
+GET    & /v1/folders                   & Yes & List folders (paginated) \\
+GET    & /v1/folder/:id                & Yes & Get folder by ID \\
+GET    & /v1/folder/:id/real-path      & Yes & Get folder FTP path \\
+GET    & /v1/my-folders                & Yes & Get my folders \\
+\midrule
+\multicolumn{4}{l}{\textit{Files}} \\
+\midrule
+PUT    & /v1/file/:id                  & Yes & Rename / move file \\
+DELETE & /v1/file/:id                  & Yes & Hard-delete file \\
+GET    & /v1/files                     & Yes & List files (paginated) \\
+GET    & /v1/file/:id                  & Yes & Get file by ID \\
+GET    & /v1/my-files/:id              & Yes & List files in my folder \\
+GET    & /v1/file/history/:id          & Yes & Get file version history \\
+\midrule
+\multicolumn{4}{l}{\textit{Media}} \\
+\midrule
+POST   & /v1/media/upload/folder       & Yes & Bulk folder upload \\
+POST   & /v1/media/upload/:id          & Yes & Single file upload \\
+POST   & /v1/media/stream              & Yes & Stream / download file \\
+GET    & /v1/media/site                & Yes & List FTP sites \\
+\midrule
+\multicolumn{4}{l}{\textit{Sharing}} \\
+\midrule
+POST   & /v1/sharing/file              & Yes & Create file sharing \\
+DELETE & /v1/sharing/file/:id          & Yes & Remove file sharing \\
+GET    & /v1/sharing/file/:id          & Yes & Get file sharing \\
+POST   & /v1/sharing/folder            & Yes & Create folder sharing \\
+DELETE & /v1/sharing/folder/:id        & Yes & Remove folder sharing \\
+GET    & /v1/sharing/folder/:id        & Yes & Get folder sharing \\
+\midrule
+\multicolumn{4}{l}{\textit{Debug (non-production only)}} \\
+\midrule
+POST   & /v1/debug/ftp/:siteId         & No  & Test FTP path on site \\
+GET    & /v1/debug/orphans             & No  & Inspect orphaned records \\
+DELETE & /v1/debug/orphans             & No  & Delete all orphaned records \\
+\midrule
+\multicolumn{4}{l}{\textit{Docs \& Jobs}} \\
+\midrule
+GET    & /docs                         & No  & Swagger UI \\
+GET    & /docs/openapi.json            & No  & OpenAPI 3.x specification \\
+POST   & /v1/api/inngest               & No  & Inngest function serve endpoint \\
+\bottomrule
+\caption{Complete endpoint summary}
+\end{longtable}
+
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Security Considerations}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{JWT Secret} — the default value \texttt{jwt-secret} must be overridden with a cryptographically strong secret in staging and production environments.
+  \item \textbf{Session replay prevention} — the raw JWT is stored as \texttt{jwtHash} in the \texttt{Session} table. The guard middleware validates both the JWT signature \emph{and} the existence of an active session entry, preventing use of stolen tokens after logout.
+  \item \textbf{Ownership enforcement} — all mutating operations filter by \texttt{accountId = currentUser.id}, ensuring users can only modify their own resources.
+  \item \textbf{FTP TLS} — \texttt{NODE\_REJECT\_UNAUTHORIZE=false} by default eases local development; set to \texttt{true} in production to validate FTP server certificates.
+  \item \textbf{Encryption salt} — the \texttt{E\_SALT} environment variable must be set; it is used for encrypting FTP credential material at rest.
+  \item \textbf{Debug endpoint isolation} — debug routes check \texttt{NODE\_ENV} at request time and redirect to \texttt{/} in production, providing a safety net against accidental exposure.
+  \item \textbf{Secure headers} — the \texttt{hono/secure-headers} middleware adds \texttt{X-Content-Type-Options}, \texttt{X-Frame-Options}, \texttt{Strict-Transport-Security}, and other OWASP-recommended headers.
+  \item \textbf{Input validation} — every DTO is validated with \texttt{class-validator} before the handler executes; malformed requests are rejected with \texttt{422 Unprocessable Entity}.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Appendix A — Swagger / OpenAPI}
+\addcontentsline{toc}{section}{Appendix A — Swagger / OpenAPI}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The API ships with an auto-generated OpenAPI 3.x specification. When the service is running, it is available at:
+
+\begin{itemize}
+  \item \textbf{Swagger UI:} \texttt{GET /docs}
+  \item \textbf{Raw JSON spec:} \texttt{GET /docs/openapi.json}
+\end{itemize}
+
+The specification is generated from the swagger definition in \texttt{src/lib/swagger.ts} using \texttt{@hono/swagger-ui}.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Appendix B — Running Locally}
+\addcontentsline{toc}{section}{Appendix B — Running Locally}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{lstlisting}
+# Install dependencies
+npm install
+
+# Development (hot-reload via tsx)
+npm run dev
+
+# Production build (generates Prisma client + runs migrations + bundles)
+npm run build
+
+# Start production server
+npm start
+\end{lstlisting}
+
+The server listens on \texttt{PORT} (default \texttt{9000}).
+
+\vspace{1em}
+\textit{This document was generated on \today.}
+
+\end{document}
