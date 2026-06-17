@@ -70,7 +70,9 @@ export interface IRepositoryFolder {
     ): Promise<{ id: string; name: string }>;
     lists(c: Context): Promise<IItemPagination<IFolderObj[]>>;
     get(c: Context): Promise<Object | null>;
-    realPath(folderId: string): Promise<string>;
+    /** Load all folders into a Map — pass the result to realPath to avoid N+1 queries. */
+    loadFolderMap(): Promise<Map<string, Folder>>;
+    realPath(folderId: string, folderMap?: Map<string, Folder>): Promise<string>;
     myFolders(c: Context): Promise<Object[]>;
 }
 
@@ -78,17 +80,23 @@ export class RepositoryFolder implements IRepositoryFolder {
     constructor() { }
 
     /**
-     * 
-     * @param folderId 
-     * @returns 
+     * Loads every folder row once; pass the result to realPath to avoid
+     * a full-table query on every call (fix #14).
      */
-    public async realPath(folderId: string): Promise<string> {
+    public async loadFolderMap(): Promise<Map<string, Folder>> {
         const folders = await prismaProxy.folder.findMany()
         const map = new Map<string, Folder>()
+        for (const folder of folders) map.set(folder.id, folder)
+        return map
+    }
 
-        for (const folder of folders) {
-            map.set(folder.id, folder)
-        }
+    /**
+     * @param folderId
+     * @param folderMap  Pre-loaded map from loadFolderMap(). When omitted a
+     *                   fresh DB query is issued (convenience for single calls).
+     */
+    public async realPath(folderId: string, folderMap?: Map<string, Folder>): Promise<string> {
+        const map = folderMap ?? await this.loadFolderMap()
 
         const buildPath = (id: string): string => {
             const folder = map.get(id)
@@ -135,6 +143,10 @@ export class RepositoryFolder implements IRepositoryFolder {
             const workingDir = `${homePath}/${parentPath}`
             const finalPath = (workingDir + '/' + obj.folderName).replace(/\/+/g, '/')
             console.log(`[finalPath]`, finalPath)
+            // Fix #8: create the FTP directory first; if the DB write fails the
+            // reconciler will clean up the orphaned directory.
+            await ftp.ensureDir(finalPath)
+
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
                     ftpHost: env.FTP_HOST,
@@ -153,8 +165,6 @@ export class RepositoryFolder implements IRepositoryFolder {
                     }
                 })
             })
-
-            await ftp.ensureDir(finalPath)
             return {
                 statusCode: StatusCodes.CREATED,
                 messages: ['Create Success'],
@@ -202,43 +212,50 @@ export class RepositoryFolder implements IRepositoryFolder {
             await ftp.connect()
             const currentDir = await this.realPath(exist.id)
             const lastWorkDir = `${homePath}/${currentDir}`.replace(/\/+/g, '/')
-            let newWorkDir = lastWorkDir
 
-            // if new parent <> last parent
+            // Fix #7: always derive newWorkDir from the parent directory + new folder name
+            // so a name-only rename doesn't accidentally nest the folder inside itself.
+            let newParentDir: string
             if (obj.parentId && obj.parentId !== exist.parentId) {
+                // Moving to a different parent — ensure that parent dir exists on FTP
                 const parentPath = await this.realPath(obj.parentId)
-                newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
-
-                await ftp.ensureDir(newWorkDir)
+                newParentDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
+                await ftp.ensureDir(newParentDir)
+            } else if (exist.parentId) {
+                const parentPath = await this.realPath(exist.parentId)
+                newParentDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
+            } else {
+                newParentDir = homePath
             }
+            const newWorkDir = `${newParentDir}/${obj.folderName}`.replace(/\/+/g, '/')
 
-            // if new folderName <> last folderName
-            if (obj.folderName !== exist.folderName) {
-                newWorkDir = `${newWorkDir}/${obj.folderName}`.replace(/\/+/g, '/')
-                await ftp.ensureDir(newWorkDir)
-            }
-
-            await prismaProxy.$transaction(async (tx) => {
-                const source: ISource = {
-                    ftpHost: env.FTP_HOST,
-                    ftpPort: obj.siteId,
-                    remotePath: lastWorkDir, newWorkDir
-                }
-
-                await tx.folder.update({
-                    data: {
-                        folderName: obj.folderName,
-                        parentId: obj.parentId,
-                        label: obj.label,
-                        source: source as unknown as InputJsonObject,
-                        accountId: account.id,
-                        updatedAt: new Date()
-                    },
-                    where: { id, accountId: account.id }
-                })
-            })
-
+            // Rename on FTP first; roll back if the DB write fails
             await ftp.rename(lastWorkDir, newWorkDir)
+
+            try {
+                await prismaProxy.$transaction(async (tx) => {
+                    const source: ISource = {
+                        ftpHost: env.FTP_HOST,
+                        ftpPort: obj.siteId,
+                        remotePath: lastWorkDir, newWorkDir
+                    }
+
+                    await tx.folder.update({
+                        data: {
+                            folderName: obj.folderName,
+                            parentId: obj.parentId,
+                            label: obj.label,
+                            source: source as unknown as InputJsonObject,
+                            accountId: account.id,
+                            updatedAt: new Date()
+                        },
+                        where: { id, accountId: account.id }
+                    })
+                })
+            } catch (dbError) {
+                try { await ftp.rename(newWorkDir, lastWorkDir) } catch { /* ignore */ }
+                throw dbError
+            }
 
             return {
                 statusCode: StatusCodes.CREATED,
@@ -299,14 +316,16 @@ export class RepositoryFolder implements IRepositoryFolder {
             const currentDir = await this.realPath(id)
             const workingDir = `${homePath}/${currentDir}`
 
-            await ftp.removeDir(workingDir.replace(/\/+/g, '/'))
-            // delete everythings in folders and files
+            // Fix #9: delete DB records first; if the FTP removal fails afterwards
+            // the orphan reconciler will clean up the dangling directory.
             await prismaProxy.$transaction(async (tx) => {
                 await tx.fileSharing.deleteMany({ where: { fileId: { in: fileIds.map(e => e.id) }, accountId: account.id } })
                 await tx.folderSharing.deleteMany({ where: { folderId: { in: folderIds }, accountId: account.id } })
                 await tx.file.deleteMany({ where: { id: { in: fileIds.map(e => e.id) }, accountId: account.id } })
                 await tx.folder.deleteMany({ where: { id: { in: folderIds }, accountId: account.id } })
             })
+
+            await ftp.removeDir(workingDir.replace(/\/+/g, '/'))
 
             return {
                 statusCode: StatusCodes.OK,

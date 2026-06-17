@@ -218,8 +218,8 @@ export class FtpLibrary implements IFtpLibrary {
     }
 
     /**
-    * 
-    * @param remotePath 
+    *
+    * @param remotePath
     */
     async ensureDir(remotePath: string): Promise<void> {
         const pwd = await this.client.pwd()
@@ -227,7 +227,20 @@ export class FtpLibrary implements IFtpLibrary {
     }
 
     /**
-     * 
+     * Check whether a remote directory exists by attempting to list it.
+     * Returns false on any error (including "no such directory").
+     */
+    async dirExists(remotePath: string): Promise<boolean> {
+        try {
+            await this.client.list(remotePath)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /**
+     *
      */
     async listAllFiles(rootDir: string = '/'): Promise<FtpEntry[]> {
         const results: FtpEntry[] = []

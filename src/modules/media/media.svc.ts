@@ -69,7 +69,7 @@ export class RepositoryMedia implements IRepositoryMedia {
 
         if (files.length === 0) throw new HttpException({
             errCode: 'EMPTY_FILE',
-            statusCode: StatusCodes.NOT_FOUND,
+            statusCode: StatusCodes.BAD_REQUEST,
             messages: ['No files found!']
         })
 
@@ -91,43 +91,43 @@ export class RepositoryMedia implements IRepositoryMedia {
         const source = folder.source as ISource
         const site = source.ftpPort!
 
-        /* execution */
-        const ftpLibrary = new FtpLibrary(Number(site))
-        try {
-            const limitFtp = plimit(10)
-            const promise = files.map(async (file) => limitFtp(async () => {
-                await ftpLibrary.connect()
+        /* execution — each file gets its own FtpLibrary to avoid shared-state races */
+        const limitFtp = plimit(10)
+        const promise = files.map(async (file) => limitFtp(async () => {
+            const ftpLib = new FtpLibrary(Number(site))
+            try {
+                await ftpLib.connect()
                 const buffer = Readable.fromWeb(file.stream() as any)
-                const res = await ftpLibrary.uploadFile(workingDir, { buffer, fileName: file.name })
-                return { res, file }
-            }))
+                await ftpLib.uploadFile(workingDir, { buffer, fileName: file.name })
+                return { file }
+            } finally {
+                ftpLib.close()
+            }
+        }))
 
-            const filesUpload = await Promise.all(promise)
-            const limitDb = plimit(3)
-            const mapFile = filesUpload.map(async (e) => limitDb(async () => {
-                /* create new-file(s) */
-                const fileBody: FileNewDto = {
-                    folderId: folder.id,
-                    fileName: e.file.name,
-                    fileSize: e.file.size,
-                    fileType: e.file.type,
-                    siteId: site
-                }
+        const filesUpload = await Promise.all(promise)
+        const limitDb = plimit(3)
+        const mapFile = filesUpload.map(async (e) => limitDb(async () => {
+            /* create new-file(s) */
+            const fileBody: FileNewDto = {
+                folderId: folder.id,
+                fileName: e.file.name,
+                fileSize: e.file.size,
+                fileType: e.file.type,
+                siteId: site
+            }
 
-                return await this.fileRepo.newFile(c, fileBody)
-            }))
+            return await this.fileRepo.newFile(c, fileBody)
+        }))
 
-            const res = await Promise.all(mapFile)
-            const payload = res.map(e => e.payload).filter(notEmpty)
-            const messages = files.map(e => `Upload file ${e.name} sukses!`)
-            return {
-                statusCode: 200,
-                messages,
-                payload
-            } satisfies IOkResponse
-        } finally {
-            ftpLibrary.close()
-        }
+        const res = await Promise.all(mapFile)
+        const payload = res.map(e => e.payload).filter(notEmpty)
+        const messages = files.map(e => `Upload file ${e.name} sukses!`)
+        return {
+            statusCode: 200,
+            messages,
+            payload
+        } satisfies IOkResponse
     }
 
     /**
@@ -157,6 +157,11 @@ export class RepositoryMedia implements IRepositoryMedia {
                 rootFolder = { id: folder.id, name: folder.folderName }
             }
         } else {
+            if (isNaN(siteId)) throw new HttpException({
+                errCode: 'SITE_ID_REQUIRED',
+                statusCode: StatusCodes.BAD_REQUEST,
+                messages: ['siteId query param is required when folderId is not provided'],
+            })
             workingDir = homePath
             source = {
                 ftpHost: env.FTP_HOST,
@@ -178,7 +183,7 @@ export class RepositoryMedia implements IRepositoryMedia {
         if (files.length === 0)
             throw new HttpException({
                 errCode: 'EMPTY_FILE',
-                statusCode: StatusCodes.NOT_FOUND,
+                statusCode: StatusCodes.BAD_REQUEST,
                 messages: ['No file found!'],
             })
 
@@ -225,11 +230,13 @@ export class RepositoryMedia implements IRepositoryMedia {
         const saga = new UploadSaga()
         const ftpLibrary = new FtpLibrary(siteId)
 
+        // Connect once; uploadFile no longer closes the connection
+        await ftpLibrary.connect()
+
         try {
             const records = []
             for (const { file, segments, fileName, ftpPath } of items) {
                 // 1. Create fresh DB folder chain → get the leaf folderId
-                await ftpLibrary.connect()
                 const leafFolder: { id: string; name: string } = segments.length > 0
                     ? await this.folderRepo.createFolderChain(segments, rootFolder?.id, account.id, source, saga)
                     : rootFolder ?? (() => {
@@ -245,7 +252,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                 // 3. Upload new FTP file
                 const buffer = Readable.fromWeb(file.stream() as any)
                 await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
-                saga.track({ type: 'ftp', path: ftpPath, siteId })
+                saga.track({ type: 'ftp', dirPath: ftpPath, fileName, siteId })
 
                 // 4. Find unique file-folder
                 const existingFile = await prismaProxy.file.findUnique({
@@ -293,7 +300,7 @@ export class RepositoryMedia implements IRepositoryMedia {
             const messages = files.map(e => `Upload file ${e.name} sukses!`)
             return { statusCode: 200, messages, payload: records }
         } catch (error) {
-            await saga.rollback(ftpLibrary)
+            await saga.rollback()
             throw error
         } finally {
             ftpLibrary.close()

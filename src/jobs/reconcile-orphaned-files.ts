@@ -74,37 +74,43 @@ export const reconcileOrphanedFiles = inngest.createFunction(
             await step.run(`check-ftp-site-${siteId}`, async () => {
                 const ftp = new FtpLibrary(siteId)
 
+                // Fix #14: load the folder map once per step instead of once per file
+                const folderMap = await folderRepo.loadFolderMap()
+
                 try {
                     for (const dbFile of files) {
                         await ftp.connect()
-                        // get truthly path based on folderId
                         const homeDir = homePath(dbFile.account.username)
-                        const realPath = await folderRepo.realPath(dbFile.folderId)
-                        const workingDir = `${homeDir}/${realPath}`
-                        const exists = await ftp.findFile(workingDir, dbFile.fileName)
+                        const realPath = await folderRepo.realPath(dbFile.folderId, folderMap)
+                        const workingDir = `${homeDir}/${realPath}`.replace(/\/+/g, '/')
 
-                        ftp.close()
-                        if (!exists) {
+                        // Fix #3: findFile throws when the file is missing; catch it to
+                        // collect the orphan instead of crashing the step.
+                        try {
+                            await ftp.findFile(workingDir, dbFile.fileName)
+                        } catch {
                             logger.warn(`DB file ${dbFile.id} has no FTP counterpart at ${workingDir}`)
                             orphanedDbIds.push(dbFile.id)
                         }
+
+                        ftp.close()
                     }
 
                     /* ── also list FTP root and find files with no DB record ── */
                     const limit = plimit(5)
                     const realPathPromise = files.map(async (file) => limit(async () => {
-                        const folderPath = await folderRepo.realPath(file.folderId)
-                        return `${folderPath}/${file.fileName}`.replace(/\/+/g, '/')  // ← append fileName
+                        const folderPath = await folderRepo.realPath(file.folderId, folderMap)
+                        return `${folderPath}/${file.fileName}`.replace(/\/+/g, '/')
                     }))
 
                     const realPaths = await Promise.allSettled(realPathPromise)
-                    
+
                     await ftp.connect()
-                    const ftpFiles = (await ftp.listAllFiles()).map(e => e.path)   // returns string[] of full paths
+                    const ftpFiles = (await ftp.listAllFiles()).map(e => e.path)
                     const dbPaths = new Set(
                         realPaths
-                            .filter((e): e is PromiseFulfilledResult<string> => e.status === 'fulfilled')  // ← type guard
-                            .map(e => e.value)   // ← extract the actual string value
+                            .filter((e): e is PromiseFulfilledResult<string> => e.status === 'fulfilled')
+                            .map(e => e.value)
                     )
 
                     for (const ftpPath of ftpFiles) {
@@ -147,7 +153,11 @@ export const reconcileOrphanedFiles = inngest.createFunction(
                 const ftp = new FtpLibrary(siteId)
                 try {
                     await ftp.connect()
-                    await ftp.removeFile(path, 'file-tobe')
+                    // Fix #4: removeFile(dir, name) — split the full path correctly
+                    const lastSlash = path.lastIndexOf('/')
+                    const dir  = path.substring(0, lastSlash)
+                    const name = path.substring(lastSlash + 1)
+                    await ftp.removeFile(dir, name)
                     deleted++
                 } catch (err) {
                     logger.error(`Failed to delete orphaned FTP file at ${path}`, err)

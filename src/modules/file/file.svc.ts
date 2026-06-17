@@ -173,55 +173,59 @@ export class RepositoryFile implements IRepositoryFile {
             if (obj.folderId && obj.folderId !== exist.folderId) {
                 const parentPath = await this.folderRepo.realPath(obj.folderId)
                 newWorkDir = `${homePath}/${parentPath}`.replace(/\/+/g, '/')
-
                 await ftp.ensureDir(newWorkDir)
             }
 
-            const fileHash = await ftp.send(newWorkDir, obj.fileName, 'XMD5')
+            // Fix #6: hash the EXISTING file at its current location before any rename
+            const fileHash = await ftp.send(lastWorkDir, exist.fileName, 'XMD5')
             const lastVersion = await prismaProxy.fileHistory.findFirst({ where: { id: exist.id } })
             const version = lastVersion?.version ? lastVersion.version + 1 : 0
 
-            await prismaProxy.$transaction(async (tx) => {
-                const source: ISource = {
-                    ftpHost: env.FTP_HOST,
-                    ftpPort: obj.siteId,
-                    remotePath: lastWorkDir, newWorkDir,
-                    fileHash: fileHash as FTPResponse
-                }
+            // Fix #5: rename on FTP FIRST so DB and FTP stay in sync
+            const oldFtpPath = `${lastWorkDir}/${exist.fileName}`.replace(/\/+/g, '/')
+            const newFtpPath = `${newWorkDir}/${obj.fileName}`.replace(/\/+/g, '/')
+            await ftp.rename(oldFtpPath, newFtpPath)
 
-                await tx.file.update({
-                    data: {
-                        accountId: account.id,
-                        folderId: obj.folderId,
-                        fileName: obj.fileName,
-                        fileHash: fileHash.message,
-                        source: source as unknown as InputJsonObject,
-                    },
-                    where: { id, accountId: account.id }
-                })
-
-                await tx.fileHistory.create({
-                    data: {
-                        accountId: account.id,
-                        fileId: exist.id,
-                        json: obj as unknown as InputJsonObject,
-                        version,
-                        createdAt: new Date(),
+            try {
+                await prismaProxy.$transaction(async (tx) => {
+                    const source: ISource = {
+                        ftpHost: env.FTP_HOST,
+                        ftpPort: obj.siteId,
+                        remotePath: lastWorkDir, newWorkDir,
+                        fileHash: fileHash as FTPResponse
                     }
+
+                    await tx.file.update({
+                        data: {
+                            accountId: account.id,
+                            folderId: obj.folderId,
+                            fileName: obj.fileName,
+                            fileHash: fileHash.message,
+                            source: source as unknown as InputJsonObject,
+                        },
+                        where: { id, accountId: account.id }
+                    })
+
+                    await tx.fileHistory.create({
+                        data: {
+                            accountId: account.id,
+                            fileId: exist.id,
+                            json: obj as unknown as InputJsonObject,
+                            version,
+                            createdAt: new Date(),
+                        }
+                    })
                 })
-            })
-
-            const file = await ftp.findFile(newWorkDir, obj.fileName)
-            await ftp.rename(
-                (lastWorkDir + '/' + obj.fileName).replace(/\/+/g, '/'),
-                (newWorkDir + '/' + obj.fileName).replace(/\/+/g, '/')
-            )
-
+            } catch (dbError) {
+                // Rollback the FTP rename — the reconciler will catch it if this also fails
+                try { await ftp.rename(newFtpPath, oldFtpPath) } catch { /* ignore */ }
+                throw dbError
+            }
 
             return {
                 statusCode: StatusCodes.CREATED,
-                messages: ['File uploaded'],
-                payload: { lastWorkDir, newWorkDir, file }
+                messages: ['File renamed'],
+                payload: { lastWorkDir, newWorkDir }
             } satisfies IOkResponse
         } finally {
             ftp.close()

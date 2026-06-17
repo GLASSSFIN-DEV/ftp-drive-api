@@ -38,6 +38,9 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
         })
     ])
 
+    // Fix #14: load the folder map once instead of once per realPath call
+    const folderMap = await folderRepo.loadFolderMap()
+
     const orphanedFiles: OrphanCheckResult = {
         dbFoldersMissingOnFtp: [],
         ftpFoldersMissingInDb: [],
@@ -52,7 +55,7 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
         const siteId = source?.ftpPort
         if (!siteId) continue
 
-        const realPath = await folderRepo.realPath(folder.id)
+        const realPath = await folderRepo.realPath(folder.id, folderMap)
         const homeDir = homePath(folder.account.username)
         const fullPath = `${homeDir}/${realPath}`.replace(/\/+/g, '/')
 
@@ -68,7 +71,7 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
         if (!siteId) continue
 
         try {
-            const realPath = await folderRepo.realPath(file.folderId)
+            const realPath = await folderRepo.realPath(file.folderId, folderMap)
             const homeDir = homePath(file.account.username)
             const fullPath = `${homeDir}/${realPath}/${file.fileName}`.replace(/\/+/g, '/')
 
@@ -92,9 +95,10 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
             const dbFolderPaths = new Set<string>(folders.map(f => f.path))
             
             for (const { folder, path } of folders) {
-                try {
-                    await ftp.findFile(path, '.')
-                } catch {
+                // Fix #13: use dirExists (list the directory) instead of findFile(path, '.')
+                // which always threw because '.' is never returned by FTP LIST responses.
+                const exists = await ftp.dirExists(path)
+                if (!exists) {
                     orphanedFiles.dbFoldersMissingOnFtp.push({
                         id: folder.id,
                         folderName: folder.folderName,
