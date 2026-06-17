@@ -8,7 +8,7 @@ import { FileSharingNewDto } from "../dto/file-share.dto.js";
 import { FolderChangeDto, FolderNewDto } from "../dto/folder.dto.js";
 import { FileChangeDto, FileNewDto } from "../dto/file.dto.js";
 import { FolderSharingNewDto } from "../dto/folder-share.dto.js";
-import { MediaDropDto, MediaStreamDto } from "../dto/media.dto.js";
+import { MediaDropDto, MediaFolderUpload, MediaStreamDto } from "../dto/media.dto.js";
 import { PageQueryDto, UuidDto } from "../dto/query.dto.js";
 import { RbacNewDto } from "../dto/rbac.dto.js";
 import { UserChangeDto, UserNewDto } from "../dto/user.dto.js";
@@ -26,6 +26,7 @@ new FileChangeDto()
 new FileSharingNewDto()
 new FolderSharingNewDto()
 new MediaDropDto()
+new MediaFolderUpload()
 new MediaStreamDto()
 new PageQueryDto()
 new UuidDto()
@@ -327,30 +328,37 @@ export const definition = {
     '/v1/folder': {
       post: {
         tags: ['Folder'],
-        summary: 'Folder New',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
+        summary: 'Create Folder',
+        description: 'Creates the FTP directory first, then persists the DB record. If the DB write fails, the orphaned FTP directory will be cleaned up by the reconciler.',
+        security: [{ BearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
             'application/json': {
-              schema: {
-                $ref:
-                  '#/components/schemas/FolderNewDto',
-              },
+              schema: { $ref: '#/components/schemas/FolderNewDto' },
             },
           },
         },
         responses: {
-          200: {
-            description: 'Success',
+          201: {
+            description: 'Folder created',
             content: {
-              "application/json": {
+              'application/json': {
                 schema: {
-                  $ref: "#/components/schemas/OkResponse",
+                  allOf: [
+                    { $ref: '#/components/schemas/OkResponse' },
+                    {
+                      type: 'object',
+                      properties: {
+                        payload: {
+                          type: 'object',
+                          properties: {
+                            remotePath: { type: 'string', example: '/home/user/myFolder' },
+                          },
+                        },
+                      },
+                    },
+                  ],
                 },
               },
             },
@@ -358,10 +366,24 @@ export const definition = {
           400: {
             description: 'Bad Request',
             content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FailResponse",
-                },
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          404: {
+            description: 'Parent folder not found (PARENT_NOT_FOUND)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          409: {
+            description: 'Conflict — folder name already exists (FOLDER_EXISTS)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
               },
             },
           },
@@ -411,39 +433,47 @@ export const definition = {
       },
       post: {
         tags: ['Folder'],
-        summary: 'Folder Change',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
+        summary: 'Rename / Move Folder',
+        description: 'Renames or moves a folder. The FTP rename is performed first; the DB update is rolled back automatically if it fails.',
+        security: [{ BearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
             'application/json': {
-              schema: {
-                $ref:
-                  '#/components/schemas/FolderChangeDto',
-              },
+              schema: { $ref: '#/components/schemas/FolderChangeDto' },
             },
           },
         },
         parameters: [
           {
-            name: "id",
-            in: "path",
+            name: 'id',
+            in: 'path',
             required: true,
-            schema: { type: "string" },
-            description: "Id",
-          }
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Folder UUID',
+          },
         ],
         responses: {
-          200: {
-            description: 'Success',
+          201: {
+            description: 'Folder renamed / moved successfully',
             content: {
-              "application/json": {
+              'application/json': {
                 schema: {
-                  $ref: "#/components/schemas/OkResponse",
+                  allOf: [
+                    { $ref: '#/components/schemas/OkResponse' },
+                    {
+                      type: 'object',
+                      properties: {
+                        payload: {
+                          type: 'object',
+                          properties: {
+                            lastWorkDir: { type: 'string', example: '/home/user/old-name' },
+                            newWorkDir:  { type: 'string', example: '/home/user/new-name' },
+                          },
+                        },
+                      },
+                    },
+                  ],
                 },
               },
             },
@@ -451,10 +481,24 @@ export const definition = {
           400: {
             description: 'Bad Request',
             content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FailResponse",
-                },
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          404: {
+            description: 'Folder or parent not found (FOLDER_NOT_FOUND / PARENT_NOT_FOUND)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          409: {
+            description: 'Conflict — a folder with that name already exists (FOLDER_EXIST)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
               },
             },
           },
@@ -462,39 +506,32 @@ export const definition = {
       },
       delete: {
         tags: ['Folder'],
-        summary: 'Folder Remove',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
+        summary: 'Delete Folder',
+        description: 'Deletes a folder and all nested files/folders. DB records are removed first; if the subsequent FTP directory removal fails, the orphan reconciler will clean it up.',
+        security: [{ BearerAuth: [] }],
         parameters: [
           {
-            name: "id",
-            in: "path",
+            name: 'id',
+            in: 'path',
             required: true,
-            schema: { type: "string" },
-            description: "Id",
-          }
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Folder UUID',
+          },
         ],
         responses: {
           200: {
-            description: 'Success',
+            description: 'Folder and all nested content deleted',
             content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/OkResponse",
-                },
+              'application/json': {
+                schema: { $ref: '#/components/schemas/OkResponse' },
               },
             },
           },
-          400: {
-            description: 'Bad Request',
+          404: {
+            description: 'Folder not found (FOLDER_NOT_FOUND / SOURCE_NOT_FOUND)',
             content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FailResponse",
-                },
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
               },
             },
           },
@@ -679,39 +716,47 @@ export const definition = {
       },
       put: {
         tags: ['File'],
-        summary: 'File Change',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
+        summary: 'Rename / Move File',
+        description: 'Renames or moves a file. The FTP rename is performed first; if the subsequent DB update fails the rename is automatically rolled back.',
+        security: [{ BearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
             'application/json': {
-              schema: {
-                $ref:
-                  '#/components/schemas/FileChangeDto',
-              },
+              schema: { $ref: '#/components/schemas/FileChangeDto' },
             },
           },
         },
         parameters: [
           {
-            name: "id",
-            in: "path",
+            name: 'id',
+            in: 'path',
             required: true,
-            schema: { type: "string", format: "uuid" },
-            description: "File Id (UUID)",
-          }
+            schema: { type: 'string', format: 'uuid' },
+            description: 'File Id (UUID)',
+          },
         ],
         responses: {
-          200: {
-            description: 'Success',
+          201: {
+            description: 'File renamed successfully',
             content: {
-              "application/json": {
+              'application/json': {
                 schema: {
-                  $ref: "#/components/schemas/OkResponse",
+                  allOf: [
+                    { $ref: '#/components/schemas/OkResponse' },
+                    {
+                      type: 'object',
+                      properties: {
+                        payload: {
+                          type: 'object',
+                          properties: {
+                            lastWorkDir: { type: 'string', example: '/home/user/docs' },
+                            newWorkDir:  { type: 'string', example: '/home/user/archive' },
+                          },
+                        },
+                      },
+                    },
+                  ],
                 },
               },
             },
@@ -719,10 +764,24 @@ export const definition = {
           400: {
             description: 'Bad Request',
             content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FailResponse",
-                },
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          404: {
+            description: 'File or folder not found (FILE_NOT_FOUND / FOLDER_NOT_FOUND)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          409: {
+            description: 'Conflict — a file with that name already exists (FILE_EXIST)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
               },
             },
           },
@@ -904,36 +963,19 @@ export const definition = {
     },
 
     // Media
-    '/v1/media/upload': {
+    '/v1/media/upload/{id}': {
       post: {
         tags: ['Media'],
-        summary: 'Upload Multiple Files',
-        description: 'Upload multiple files to FTP storage',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
+        summary: 'Upload Files to Folder',
+        description: 'Upload one or more files into a specific folder (identified by its UUID). Each file gets its own FTP connection — concurrent uploads are safe.',
+        security: [{ BearerAuth: [] }],
         parameters: [
           {
-            name: 'site',
-            in: 'query',
+            name: 'id',
+            in: 'path',
             required: true,
-            schema: {
-              type: 'integer',
-              example: 1,
-            },
-            description: 'FTP Site ID',
-          },
-          {
-            name: 'remotePath',
-            in: 'query',
-            required: true,
-            schema: {
-              type: 'string',
-              example: '/uploads/images',
-            },
-            description: 'Destination remote folder path',
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Target folder UUID',
           },
         ],
         requestBody: {
@@ -945,11 +987,8 @@ export const definition = {
                 properties: {
                   files: {
                     type: 'array',
-                    items: {
-                      type: 'string',
-                      format: 'binary',
-                    },
-                    description: 'Multiple files upload',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'One or more files to upload',
                   },
                 },
                 required: ['files'],
@@ -959,22 +998,52 @@ export const definition = {
         },
         responses: {
           200: {
-            description: 'Success',
+            description: 'All files uploaded successfully',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/OkResponse',
+                  allOf: [
+                    { $ref: '#/components/schemas/OkResponse' },
+                    {
+                      type: 'object',
+                      properties: {
+                        payload: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              remotePath: { type: 'string', example: '/myFolder/sub' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ],
                 },
               },
             },
           },
           400: {
-            description: 'Bad Request',
+            description: 'Bad Request — e.g. EMPTY_FILE (no files provided)',
             content: {
               'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/FailResponse',
-                },
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          404: {
+            description: 'Folder not found (FOLDER_NOT_FOUND)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          500: {
+            description: 'FTP connection error (FTP_CONNECT_ISSUE)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
               },
             },
           },
@@ -984,33 +1053,23 @@ export const definition = {
     '/v1/media/upload/folder': {
       post: {
         tags: ['Media'],
-        summary: 'Upload Folder',
-        description: 'Upload folder recursively to FTP storage',
-        security: [
-          {
-            BearerAuth: [],
-          },
-        ],
+        summary: 'Upload Folder Tree',
+        description: 'Upload a folder tree preserving its relative path structure. Provide matching `files` and `paths[]` arrays. When uploading to the root home directory, `siteId` is required.',
+        security: [{ BearerAuth: [] }],
         parameters: [
           {
-            name: 'site',
+            name: 'folderId',
             in: 'query',
-            required: true,
-            schema: {
-              type: 'integer',
-              example: 1,
-            },
-            description: 'FTP Site ID',
+            required: false,
+            schema: { type: 'string', format: 'uuid' },
+            description: 'UUID of the target parent folder. When omitted, files are placed in the user\'s home directory and `siteId` is required.',
           },
           {
-            name: 'remotePath',
+            name: 'siteId',
             in: 'query',
-            required: true,
-            schema: {
-              type: 'string',
-              example: '/uploads/projects',
-            },
-            description: 'Destination remote folder path',
+            required: false,
+            schema: { type: 'integer', example: 990 },
+            description: 'FTP site port. Required when `folderId` is not provided.',
           },
         ],
         requestBody: {
@@ -1022,23 +1081,14 @@ export const definition = {
                 properties: {
                   files: {
                     type: 'array',
-                    items: {
-                      type: 'string',
-                      format: 'binary',
-                    },
-                    description: 'Folder files',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'Files to upload — must be the same count as `paths[]`',
                   },
                   'paths[]': {
                     type: 'array',
-                    items: {
-                      type: 'string',
-                    },
-                    example: [
-                      'images',
-                      'images/icons',
-                      'docs',
-                    ],
-                    description: 'Relative folder paths',
+                    items: { type: 'string' },
+                    example: ['myFolder/report.pdf', 'myFolder/images/logo.png'],
+                    description: 'Relative path for each file (including filename). Count must match `files`.',
                   },
                 },
                 required: ['files', 'paths[]'],
@@ -1048,22 +1098,26 @@ export const definition = {
         },
         responses: {
           200: {
-            description: 'Success',
+            description: 'All files uploaded and DB records created/updated',
             content: {
               'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/OkResponse',
-                },
+                schema: { $ref: '#/components/schemas/OkResponse' },
               },
             },
           },
           400: {
-            description: 'Bad Request',
+            description: 'Bad Request — possible errCodes: EMPTY_FILE, SITE_ID_REQUIRED, RELATIVE_PATH_NOT_SYNCUP, NO_ROOT_FOLDER',
             content: {
               'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/FailResponse',
-                },
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          500: {
+            description: 'FTP connection error (FTP_CONNECT_ISSUE)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
               },
             },
           },
