@@ -149,13 +149,16 @@ export class RepositoryMedia implements IRepositoryMedia {
 
         if (folderId) {
             const folder = await prismaProxy.folder.findFirst({ where: { id: folderId } })
-            if (folder) {
-                const folderPath = await this.folderRepo.realPath(folder.id)
-                workingDir = `${homePath}/${folderPath}`
-                source = folder.source as ISource
-                siteId = source.ftpPort!
-                rootFolder = { id: folder.id, name: folder.folderName }
-            }
+            if (!folder) throw new HttpException({
+                errCode: 'FOLDER_NOT_FOUND',
+                statusCode: StatusCodes.NOT_FOUND,
+                messages: ['Folder not found'],
+            })
+            const folderPath = await this.folderRepo.realPath(folder.id)
+            workingDir = `${homePath}/${folderPath}`
+            source = folder.source as ISource
+            siteId = source.ftpPort!
+            rootFolder = { id: folder.id, name: folder.folderName }
         } else {
             if (isNaN(siteId)) throw new HttpException({
                 errCode: 'SITE_ID_REQUIRED',

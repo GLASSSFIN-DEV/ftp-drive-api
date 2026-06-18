@@ -62,7 +62,7 @@ export class FtpLibrary implements IFtpLibrary {
             throw new HttpException({
                 errCode: 'FTP_CONNECT_ISSUE',
                 statusCode: 500,
-                messages: ['Cannot connect to FTP Server']
+                messages: [error instanceof Error ? error.message : 'Cannot connect to FTP Server'],
             })
         }
     }
@@ -94,16 +94,25 @@ export class FtpLibrary implements IFtpLibrary {
      * @returns 
      */
     async uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string; }): Promise<void> {
-        const pwd = await this.client.pwd()
-        if (pwd !== remotePath) await this.client.ensureDir(remotePath)
+        try {
+            const pwd = await this.client.pwd()
+            if (pwd !== remotePath) await this.client.ensureDir(remotePath)
 
-        this.client.trackProgress(info => {
-            logger.http('[ftp]', { ...info })
-        })
+            this.client.trackProgress(info => {
+                logger.http('[ftp]', { ...info })
+            })
 
-        await this.client.uploadFrom(obj.buffer, obj.fileName)
-        this.client.trackProgress()
-        this.client.close()
+            await this.client.uploadFrom(obj.buffer, obj.fileName)
+            this.client.trackProgress()
+        } catch (error) {
+            throw new HttpException({
+                errCode: 'FTP_UPLOAD_FAILED',
+                statusCode: 500,
+                messages: [error instanceof Error ? error.message : 'FTP upload failed'],
+            })
+        } finally {
+            this.client.close()
+        }
     }
 
     /**
