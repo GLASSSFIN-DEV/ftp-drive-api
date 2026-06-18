@@ -110,9 +110,7 @@ export class FtpLibrary implements IFtpLibrary {
                 statusCode: 500,
                 messages: [error instanceof Error ? error.message : 'FTP upload failed'],
             })
-        } finally {
-            this.client.close()
-        }
+        } 
     }
 
     /**
