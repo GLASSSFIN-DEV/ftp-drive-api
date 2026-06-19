@@ -122,12 +122,6 @@ export class FtpLibrary implements IFtpLibrary {
         stream: ReadableStream<Uint8Array>;
         size: number;
     }> {
-        await this.client.pwd()
-
-        this.client.trackProgress(info => {
-            logger.http('[ftp]', { ...info })
-        })
-
         const lists = await this.client.list(remotePath)
         const files = lists.filter(e => !e.isDirectory)
         const file = files.find(e => e.name === fileName)
@@ -140,31 +134,42 @@ export class FtpLibrary implements IFtpLibrary {
             })
 
         const pass = new PassThrough()
-        await this.client.downloadTo(pass, fileName)
-            .then(() => {
-                pass.end();
-            })
-            .catch((err) => {
-                pass.destroy(err);
-                this.client.close();
-            });
+        const fullRemotePath = `${remotePath}/${fileName}`.replace(/\/+/g, '/')
+        const client = this.client
 
-        this.client.trackProgress()
+        // Attach listeners BEFORE starting the download so no events are missed
         const stream = new ReadableStream<Uint8Array>({
             start(controller) {
-                pass.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
-                pass.on("end", () => controller.close());
-                pass.on("error", (err) => controller.error(err));
+                pass.on('data', (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
+                pass.on('end', () => {
+                    controller.close()
+                    client.close()
+                })
+                pass.on('error', (err) => {
+                    controller.error(err)
+                    client.close()
+                })
             },
             cancel() {
-                pass.destroy();
+                pass.destroy()
+                client.close()
             },
-        });
+        })
 
-        return {
-            stream,
-            size: file.size,
-        }
+        client.trackProgress(info => logger.http('[ftp]', { ...info }))
+
+        // Do NOT await — let data flow into the stream as it arrives
+        client.downloadTo(pass, fullRemotePath)
+            .then(() => {
+                client.trackProgress()
+                pass.end()
+            })
+            .catch(err => {
+                client.trackProgress()
+                pass.destroy(err)
+            })
+
+        return { stream, size: file.size }
     }
 
     /**

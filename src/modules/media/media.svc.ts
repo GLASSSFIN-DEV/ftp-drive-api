@@ -315,7 +315,7 @@ export class RepositoryMedia implements IRepositoryMedia {
      */
     async stream(c: Context): Promise<Response> {
         const body = c.get('validatedBody') as MediaStreamDto
-        const ftpLibrary = new FtpLibrary()
+        const ftpLibrary = new FtpLibrary(body.site)
 
         try {
             await ftpLibrary.connect()
@@ -327,9 +327,11 @@ export class RepositoryMedia implements IRepositoryMedia {
                 "Cache-Control": "no-store",
             }
 
+            // FTP connection is closed by streamFile when the stream ends/errors/cancels
             return new Response(res.stream, { status: StatusCodes.OK, headers })
-        } finally {
+        } catch (error) {
             ftpLibrary.close()
+            throw error
         }
     }
 
