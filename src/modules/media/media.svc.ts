@@ -122,10 +122,9 @@ export class RepositoryMedia implements IRepositoryMedia {
 
         const res = await Promise.all(mapFile)
         const payload = res.map(e => e.payload).filter(notEmpty)
-        const messages = files.map(e => `Upload file ${e.name} sukses!`)
         return {
             statusCode: 200,
-            messages,
+            messages: [`Upload files ${files.map(e => e.name).join('\n')} sukses!`],
             payload
         } satisfies IOkResponse
     }
@@ -300,8 +299,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                 }
             }
 
-            const messages = files.map(e => `Upload file ${e.name} sukses!`)
-            return { statusCode: 200, messages, payload: records }
+            return { statusCode: 200, messages: [`Upload file sukses ${files.map(e => e.name).join('\n')}`], payload: records }
         } catch (error) {
             await saga.rollback()
             throw error
