@@ -320,9 +320,11 @@ export class RepositoryMedia implements IRepositoryMedia {
         try {
             await ftpLibrary.connect()
             const res = await ftpLibrary.streamFile(body.remotePath, body.fileName)
-            const mimeType = lookup(body.fileName)
+            const found = lookup(body.fileName)
+            const ext = body.fileName.split('.').pop()?.toLowerCase()
+            const mimeType = found || (ext ? `text/${ext}` : 'application/octet-stream')
             const headers: Record<string, string> = {
-                "Content-Type": mimeType as string ?? 'application/octet-stream',
+                "Content-Type": mimeType,
                 "Content-Disposition": `inline; filename="${body.fileName}"`,
                 "Cache-Control": "no-store",
             }
