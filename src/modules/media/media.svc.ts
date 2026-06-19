@@ -279,7 +279,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                         accountId: account.id,
                         fileSize: file.size,
                         fileType: file.type,
-                        source: source as any,
+                        source: { ...source, remotePath: ftpPath } as any,
                         recordStatus: 'ACTIVE',
                     },
                     update: {
