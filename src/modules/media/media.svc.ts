@@ -39,7 +39,7 @@ interface IRepositoryMedia {
     fileUpload(c: Context): Promise<IOkResponse<IUploadRes[]>>;
     folderUpload(c: Context): Promise<IOkResponse<IFolderUploadRes[]>>;
     stream(c: Context): Promise<Response>;
-    site(c: Context): Promise<ISite>;
+    site(c: Context): Promise<ISite | null>;
 }
 
 export class RepositoryMedia implements IRepositoryMedia {
@@ -338,7 +338,7 @@ export class RepositoryMedia implements IRepositoryMedia {
      * @param c 
      * @returns 
      */
-    async site(c: Context): Promise<ISite> {
+    async site(c: Context): Promise<ISite | null> {
         const site = await prismaProxy.option.findFirst({
             select: { key: true, json: true },
             where: {
@@ -347,12 +347,7 @@ export class RepositoryMedia implements IRepositoryMedia {
             }
         })
 
-        if (!site) throw new HttpException({
-            errCode: 'NOT_FOUND',
-            statusCode: StatusCodes.NOT_FOUND,
-            messages: ['No site registered!']
-        })
-
+        if (!site) return null
         const value: ISite = site?.json as ISite
         return value
     }
