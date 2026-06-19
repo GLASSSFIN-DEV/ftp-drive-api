@@ -5,6 +5,7 @@ import folder from './folder/index.js'
 import media from './media/index.js'
 import sharing from './sharing/index.js'
 import db from './debug/index.js'
+import upload from './upload/index.js'
 
 const app = new Hono()
 
@@ -14,5 +15,6 @@ app.route('/', folder)
 app.route('/', media)
 app.route('/', sharing)
 app.route('/', db)
+app.route('/', upload)
 
 export default app

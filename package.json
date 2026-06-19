@@ -2,7 +2,7 @@
   "name": "hono",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "prisma generate && prisma migrate deploy && node scripts/build.mjs",
     "start": "node dist/index.js"
   },
