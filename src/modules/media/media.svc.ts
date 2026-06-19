@@ -249,7 +249,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                         })
                     })()
 
-                logger.http(`[leaf]`, { fileName, segments, ftpPath, leafFolder })
+                logger.http(`[leaf]`, { source, fileName, segments, ftpPath, leafFolder })
 
                 // 3. Upload new FTP file
                 const buffer = Readable.fromWeb(file.stream() as any)

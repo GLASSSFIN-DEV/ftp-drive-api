@@ -95,9 +95,15 @@ export class FtpLibrary implements IFtpLibrary {
      */
     async uploadFile(remotePath: string, obj: { buffer: Readable; fileName: string; }): Promise<void> {
         try {
-            const pwd = await this.client.pwd()
-            if (pwd !== remotePath) await this.client.ensureDir(remotePath)
+            // Resolve to absolute path so ensureDir never creates dirs relative to pwd
+            const absolutePath = remotePath.startsWith('/')
+                ? remotePath
+                : `${env.FTP_HOME_DIR}/${remotePath}`.replace(/\/+/g, '/')
 
+            const pwd = await this.client.pwd()
+            if (pwd !== absolutePath) await this.client.ensureDir(absolutePath)
+
+            logger.http(`[local-vs-remote]`, { pwd, absolutePath })
             this.client.trackProgress(info => {
                 logger.http('[ftp]', { ...info })
             })
@@ -110,7 +116,7 @@ export class FtpLibrary implements IFtpLibrary {
                 statusCode: 500,
                 messages: [error instanceof Error ? error.message : 'FTP upload failed'],
             })
-        } 
+        }
     }
 
     /**

@@ -54,6 +54,7 @@ const config = {
     FTP_CONFIG: ftpConfigValidator({
         default: 'implicit'
     }),
+    FTP_HOME_DIR: str({ default: '' }),
 
     GOOGLE_CLIENT_ID: str(),
     GOOGLE_CLIENT_SECRET: str(),
