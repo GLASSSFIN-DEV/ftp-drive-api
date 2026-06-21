@@ -4,9 +4,8 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider        = "prisma-client"
-  output          = "../src/generated/prisma"
-  previewFeatures = ["views"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -283,5 +282,20 @@ model TraceSpan {
   @@index([context])
   @@index([createdAt(sort: Desc)])
   @@index([durationMs])
+  @@schema("drive")
+}
+
+model TusUpload {
+  id        String    @id
+  siteId    Int
+  tempPath  String
+  size      Int?
+  offset    Int       @default(0)
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@index([expiresAt])
+  @@index([createdAt(sort: Desc)])
   @@schema("drive")
 }

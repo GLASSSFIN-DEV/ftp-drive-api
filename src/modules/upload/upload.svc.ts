@@ -1,41 +1,35 @@
 import { Server as TusServer } from '@tus/server'
-import { FileStore } from '@tus/file-store'
-import { createReadStream } from 'node:fs'
-import path from 'node:path'
 import { getContext } from 'hono/context-storage'
 import { lookup } from 'mime-types'
 import { env } from '../../config.js'
 import { prismaProxy } from '../../lib/prisma.js'
 import { FtpLibrary } from '../../lib/ftp.js'
+import { FtpDataStore, TUS_FTP_TEMP_DIR } from '../../lib/ftp-data-store.js'
 import logger from '../../lib/logger.js'
 import { RepositoryFolder } from '../folder/folder.svc.js'
 import type { ISource } from '../folder/folder.svc.js'
 import { UploadSaga } from '../media/upload-saga.js'
 
-export const TUS_UPLOAD_DIR = process.env.TUS_UPLOAD_DIR ?? './tus-temp'
-
 const folderRepo = new RepositoryFolder()
-const fileStore = new FileStore({ directory: TUS_UPLOAD_DIR })
+const ftpDataStore = new FtpDataStore()
 
 export const tusServer = new TusServer({
     path: '/v1/upload/tus',
-    datastore: fileStore,
+    datastore: ftpDataStore,
 
     onUploadCreate: async (_req, upload) => {
-        // account is already validated by Guard.validate() on the route
-        // getContext() works because Guard.validate() runs within Hono's contextStorage()
         const account = getContext().get('account')
         if (!account) throw { status_code: 401, body: 'Unauthorized' }
 
-        const { folderId, relativePath } = upload.metadata ?? {}
+        const { folderId, relativePath, siteId } = upload.metadata ?? {}
+
+        if (!siteId) throw { status_code: 400, body: 'Missing required metadata: siteId' }
 
         if (!relativePath) {
-            // Single-file upload: folderId required
             if (!folderId) throw { status_code: 400, body: 'Missing required metadata: folderId' }
             const folder = await prismaProxy.folder.findFirst({ where: { id: folderId } })
             if (!folder) throw { status_code: 400, body: 'Folder not found' }
         } else if (folderId) {
-            // Folder upload with a parent: validate parent exists
             const folder = await prismaProxy.folder.findFirst({ where: { id: folderId } })
             if (!folder) throw { status_code: 400, body: 'Parent folder not found' }
         }
@@ -53,29 +47,27 @@ export const tusServer = new TusServer({
             throw { status_code: 400, body: 'Missing required metadata: fileName, siteId' }
         }
 
-        const tempFilePath = path.join(TUS_UPLOAD_DIR, upload.id)
+        const tempPath = `${TUS_FTP_TEMP_DIR}/${upload.id}`
         const mimeType = fileType || lookup(fileName) || 'application/octet-stream'
         const fileSize = upload.size ?? 0
         const ftpSiteId = Number(siteId)
 
         if (relativePath) {
             await handleFolderFileUpload({
-                account, tempFilePath, fileName,
+                account, tempPath, fileName,
                 folderId: folderId || undefined,
                 siteId: ftpSiteId, mimeType, fileSize, relativePath,
             })
         } else {
             if (!folderId) throw { status_code: 400, body: 'Missing required metadata: folderId' }
             await handleSingleFileUpload({
-                account, tempFilePath, fileName,
+                account, tempPath, fileName,
                 folderId, siteId: ftpSiteId, mimeType, fileSize,
             })
         }
 
-        // fileStore.remove() deletes both the data file AND the .info file.
-        // Calling plain unlink() only removes the data file and leaves .info behind,
-        // which causes FileStore.getUpload() to throw FILE_NO_LONGER_EXISTS → 410.
-        await fileStore.remove(upload.id).catch((e: Error) =>
+        // remove() deletes the temp FTP file (if still there) and the DB record
+        await ftpDataStore.remove(upload.id).catch((e: Error) =>
             logger.warn(`[tus] cleanup failed for ${upload.id}: ${e.message}`)
         )
 
@@ -87,19 +79,21 @@ export const tusServer = new TusServer({
 
 async function handleSingleFileUpload(opts: {
     account: { id: string; username: string; homePath: string }
-    tempFilePath: string; fileName: string; folderId: string
+    tempPath: string; fileName: string; folderId: string
     siteId: number; mimeType: string; fileSize: number
 }) {
-    const { account, tempFilePath, fileName, folderId, siteId, mimeType, fileSize } = opts
+    const { account, tempPath, fileName, folderId, siteId, mimeType, fileSize } = opts
 
     const folderPath = await folderRepo.realPath(folderId)
     const workingDir = `${account.homePath}/${folderPath}`.replace(/\/+/g, '/')
+    const finalPath = `${workingDir}/${fileName}`.replace(/\/+/g, '/')
 
     const ftpLib = new FtpLibrary(siteId)
     try {
         await ftpLib.connect()
-        await ftpLib.uploadFile(workingDir, { buffer: createReadStream(tempFilePath), fileName })
-        logger.info(`[tus] file done: ${workingDir}/${fileName}`)
+        await ftpLib.ensureDir(workingDir)
+        await ftpLib.rename(tempPath, finalPath)
+        logger.info(`[tus] file done: ${finalPath}`)
     } finally {
         ftpLib.close()
     }
@@ -123,10 +117,10 @@ async function handleSingleFileUpload(opts: {
 
 async function handleFolderFileUpload(opts: {
     account: { id: string; username: string; homePath: string }
-    tempFilePath: string; fileName: string; folderId: string | undefined
+    tempPath: string; fileName: string; folderId: string | undefined
     siteId: number; mimeType: string; fileSize: number; relativePath: string
 }) {
-    const { account, tempFilePath, fileName, folderId, siteId, mimeType, fileSize, relativePath } = opts
+    const { account, tempPath, fileName, folderId, siteId, mimeType, fileSize, relativePath } = opts
 
     let workingDir: string
     let rootFolder: { id: string; name: string } | undefined
@@ -144,12 +138,11 @@ async function handleFolderFileUpload(opts: {
         source = { ftpHost: env.FTP_HOST, ftpPort: siteId, remotePath: account.homePath }
     }
 
-    // Mirror media.svc.ts segment logic
     const workingDirSegments = workingDir
         .replace(/\/+/g, '/').replace(/^\/|\/$/g, '').split('/').filter(Boolean)
     const fullPath = `${workingDir}/${relativePath}`.replace(/\/+/g, '/')
     const parts = fullPath.replace(/^\//, '').split('/')
-    parts.pop() // remove fileName
+    parts.pop()
     const segments = parts.slice(workingDirSegments.length)
 
     const ftpPath = segments.length > 0
@@ -163,10 +156,12 @@ async function handleFolderFileUpload(opts: {
 
     logger.info(`[tus] folder file: ${ftpPath}/${fileName}`)
 
+    const finalPath = `${ftpPath}/${fileName}`.replace(/\/+/g, '/')
     const ftpLib = new FtpLibrary(siteId)
     try {
         await ftpLib.connect()
-        await ftpLib.uploadFile(ftpPath, { buffer: createReadStream(tempFilePath), fileName })
+        await ftpLib.ensureDir(ftpPath)
+        await ftpLib.rename(tempPath, finalPath)
         saga.track({ type: 'ftp', dirPath: ftpPath, fileName, siteId })
     } catch (err) {
         await saga.rollback()

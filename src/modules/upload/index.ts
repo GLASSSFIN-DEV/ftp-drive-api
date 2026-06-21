@@ -1,9 +1,6 @@
 import { Hono } from 'hono'
-import { mkdirSync } from 'node:fs'
 import Guard from '../../middleware/auth.validator.js'
-import { tusServer, TUS_UPLOAD_DIR } from './upload.svc.js'
-
-mkdirSync(TUS_UPLOAD_DIR, { recursive: true })
+import { tusServer } from './upload.svc.js'
 
 const router = new Hono()
 
