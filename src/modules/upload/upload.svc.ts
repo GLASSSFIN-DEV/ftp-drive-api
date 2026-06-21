@@ -1,7 +1,6 @@
 import { Server as TusServer } from '@tus/server'
 import { FileStore } from '@tus/file-store'
 import { createReadStream } from 'node:fs'
-import { unlink } from 'node:fs/promises'
 import path from 'node:path'
 import { getContext } from 'hono/context-storage'
 import { lookup } from 'mime-types'
@@ -16,10 +15,11 @@ import { UploadSaga } from '../media/upload-saga.js'
 export const TUS_UPLOAD_DIR = process.env.TUS_UPLOAD_DIR ?? './tus-temp'
 
 const folderRepo = new RepositoryFolder()
+const fileStore = new FileStore({ directory: TUS_UPLOAD_DIR })
 
 export const tusServer = new TusServer({
     path: '/v1/upload/tus',
-    datastore: new FileStore({ directory: TUS_UPLOAD_DIR }),
+    datastore: fileStore,
 
     onUploadCreate: async (_req, upload) => {
         // account is already validated by Guard.validate() on the route
@@ -72,7 +72,10 @@ export const tusServer = new TusServer({
             })
         }
 
-        await unlink(tempFilePath).catch(e =>
+        // fileStore.remove() deletes both the data file AND the .info file.
+        // Calling plain unlink() only removes the data file and leaves .info behind,
+        // which causes FileStore.getUpload() to throw FILE_NO_LONGER_EXISTS → 410.
+        await fileStore.remove(upload.id).catch((e: Error) =>
             logger.warn(`[tus] cleanup failed for ${upload.id}: ${e.message}`)
         )
 
