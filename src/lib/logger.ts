@@ -83,11 +83,11 @@ const logFormat = format.combine(
   format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label', 'ms'] }),
   format.label({ label: env.NODE_ENV }),
   format.ms(),
-  format.json(),
   format.splat(),
-  format.prettyPrint({
-    colorize: true,
-  })
+  format.printf(({ label, timestamp, ...rest }) => {
+    const tag = `\x1b[33m[${label}:${timestamp}]\x1b[0m`;
+    return `${tag} ${JSON.stringify(rest)}`;
+  }),
 );
 
 let logger: Logger;
