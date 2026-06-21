@@ -12,6 +12,10 @@ export class MediaDropDto {
     @IsNumber()
     @IsPositive()
     site!: number;
+
+    @IsString()
+    @IsOptional()
+    ftpHost?: string;
 }
 
 export class MediaStreamDto {
@@ -26,6 +30,10 @@ export class MediaStreamDto {
     @IsNumber()
     @IsPositive()
     site!: number;
+
+    @IsString()
+    @IsOptional()
+    ftpHost?: string;
 }
 
 export class MediaFolderUpload {

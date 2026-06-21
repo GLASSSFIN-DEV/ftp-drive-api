@@ -4,6 +4,7 @@ import plimit from 'p-limit'
 import { FtpLibrary } from '../lib/ftp.js'
 import { inngest } from '../lib/inngest-client.js'
 import { prismaProxy } from '../lib/prisma.js'
+import { env } from '../config.js'
 import { homePath } from '../middleware/auth.validator.js'
 import { RepositoryFolder, ISource } from '../modules/folder/folder.svc.js'
 
@@ -52,14 +53,17 @@ export const reconcileOrphanedFiles = inngest.createFunction(
          * ──────────────────────────────────────────── */
         type SiteGroup = {
             siteId: number
+            ftpHost: string
             files: typeof dbFiles
         }
 
-        const bySite = dbFiles.reduce<Record<number, SiteGroup>>((acc, f) => {
+        const bySite = dbFiles.reduce<Record<string, SiteGroup>>((acc, f) => {
             const source = (f.folder?.source ?? f.source) as ISource
             const siteId = source.ftpPort!
-            if (!acc[siteId]) acc[siteId] = { siteId, files: [] }
-            acc[siteId].files.push(f)
+            const ftpHost = source.ftpHost ?? env.FTP_HOST
+            const key = `${ftpHost}:${siteId}`
+            if (!acc[key]) acc[key] = { siteId, ftpHost, files: [] }
+            acc[key].files.push(f)
             return acc
         }, {})
 
@@ -68,11 +72,11 @@ export const reconcileOrphanedFiles = inngest.createFunction(
          *         on FTP, collect orphaned IDs
          * ──────────────────────────────────────────── */
         const orphanedDbIds: string[] = []  // in DB, missing on FTP
-        const orphanedFtpPaths: { path: string; siteId: number }[] = []  // on FTP, missing in DB
+        const orphanedFtpPaths: { path: string; siteId: number; ftpHost: string }[] = []  // on FTP, missing in DB
 
-        for (const { siteId, files } of Object.values(bySite)) {
-            await step.run(`check-ftp-site-${siteId}`, async () => {
-                const ftp = new FtpLibrary(siteId)
+        for (const { siteId, ftpHost, files } of Object.values(bySite)) {
+            await step.run(`check-ftp-site-${ftpHost}:${siteId}`, async () => {
+                const ftp = new FtpLibrary(siteId, ftpHost)
 
                 // Fix #14: load the folder map once per step instead of once per file
                 const folderMap = await folderRepo.loadFolderMap()
@@ -116,7 +120,7 @@ export const reconcileOrphanedFiles = inngest.createFunction(
                     for (const ftpPath of ftpFiles) {
                         if (!dbPaths.has(ftpPath)) {
                             logger.warn(`FTP file at ${ftpPath} has no DB record`)
-                            orphanedFtpPaths.push({ path: ftpPath, siteId })
+                            orphanedFtpPaths.push({ path: ftpPath, siteId, ftpHost })
                         }
                     }
                 } finally {
@@ -149,8 +153,8 @@ export const reconcileOrphanedFiles = inngest.createFunction(
             if (orphanedFtpPaths.length === 0) return 0
 
             let deleted = 0
-            for (const { path, siteId } of orphanedFtpPaths) {
-                const ftp = new FtpLibrary(siteId)
+            for (const { path, siteId, ftpHost } of orphanedFtpPaths) {
+                const ftp = new FtpLibrary(siteId, ftpHost)
                 try {
                     await ftp.connect()
                     // Fix #4: removeFile(dir, name) — split the full path correctly

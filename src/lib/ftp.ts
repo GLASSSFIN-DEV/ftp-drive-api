@@ -18,6 +18,7 @@ export interface IFtpLibrary {
         stream: ReadableStream<Uint8Array>;
         size: number;
     }>;
+    downloadStream(remotePath: string, fileName: string): Promise<Readable>;
     findFile(remotePath: string, name: string): Promise<FileInfo>;
     rename(oldPath: string, newPath: string): Promise<FTPResponse>;
     removeFile(remotePath: string, fileName: string): Promise<FTPResponse>;
@@ -35,17 +36,19 @@ export interface IFtpLibrary {
 export class FtpLibrary implements IFtpLibrary {
     private client: Client = new Client();
     private port: number = 990;
+    private host: string;
 
-    constructor(port: number = 990) {
+    constructor(port: number = 990, host: string = env.FTP_HOST) {
         this.client = new Client()
         this.port = port;
+        this.host = host;
         // this.client.ftp.log = (message) => env.LOG === Logs.FTP ? logger.http(`[ftp:${port}] ${message}`) : console.debug(message)
         // this.client.ftp.verbose = true
     }
 
     async connect() {
         const opts: AccessOptions = {
-            host: env.FTP_HOST,
+            host: this.host,
             port: this.port,
             user: env.FTP_USERNAME,
             password: env.FTP_PASSWORD,
@@ -176,6 +179,24 @@ export class FtpLibrary implements IFtpLibrary {
             })
 
         return { stream, size: file.size }
+    }
+
+    // Returns a Node.js Readable that streams the remote file.
+    // The FTP client closes itself when the stream ends or errors — caller
+    // does not need to call close() on this instance after awaiting.
+    async downloadStream(remotePath: string, fileName: string): Promise<Readable> {
+        const pass = new PassThrough()
+        const fullPath = `${remotePath}/${fileName}`.replace(/\/+/g, '/')
+        const client = this.client
+
+        pass.once('end',   () => client.close())
+        pass.once('error', () => client.close())
+
+        client.downloadTo(pass, fullPath)
+            .then(() => pass.end())
+            .catch(err => pass.destroy(err))
+
+        return pass
     }
 
     /**

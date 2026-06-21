@@ -4,7 +4,7 @@ import { lookup } from 'mime-types'
 import { env } from '../../config.js'
 import { prismaProxy } from '../../lib/prisma.js'
 import { FtpLibrary } from '../../lib/ftp.js'
-import { FtpDataStore, TUS_FTP_TEMP_DIR } from '../../lib/ftp-data-store.js'
+import { FtpDataStore, TUS_FTP_TEMP_DIR, resolveFtpPath } from '../../lib/ftp-data-store.js'
 import logger from '../../lib/logger.js'
 import { RepositoryFolder } from '../folder/folder.svc.js'
 import type { ISource } from '../folder/folder.svc.js'
@@ -41,28 +41,29 @@ export const tusServer = new TusServer({
         const account = getContext().get('account')
         if (!account) throw { status_code: 401, body: 'Upload session expired' }
 
-        const { fileName, folderId, siteId, fileType, relativePath } = upload.metadata ?? {}
+        const { fileName, folderId, siteId, fileType, relativePath, ftpHost: metaHost } = upload.metadata ?? {}
 
         if (!fileName || !siteId) {
             throw { status_code: 400, body: 'Missing required metadata: fileName, siteId' }
         }
 
-        const tempPath = `${TUS_FTP_TEMP_DIR}/${upload.id}`
+        const tempPath = resolveFtpPath(`${TUS_FTP_TEMP_DIR}/${upload.id}`)
         const mimeType = fileType || lookup(fileName) || 'application/octet-stream'
         const fileSize = upload.size ?? 0
         const ftpSiteId = Number(siteId)
+        const ftpHost = metaHost ?? env.FTP_HOST
 
         if (relativePath) {
             await handleFolderFileUpload({
                 account, tempPath, fileName,
                 folderId: folderId || undefined,
-                siteId: ftpSiteId, mimeType, fileSize, relativePath,
+                siteId: ftpSiteId, ftpHost, mimeType, fileSize, relativePath,
             })
         } else {
             if (!folderId) throw { status_code: 400, body: 'Missing required metadata: folderId' }
             await handleSingleFileUpload({
                 account, tempPath, fileName,
-                folderId, siteId: ftpSiteId, mimeType, fileSize,
+                folderId, siteId: ftpSiteId, ftpHost, mimeType, fileSize,
             })
         }
 
@@ -80,22 +81,27 @@ export const tusServer = new TusServer({
 async function handleSingleFileUpload(opts: {
     account: { id: string; username: string; homePath: string }
     tempPath: string; fileName: string; folderId: string
-    siteId: number; mimeType: string; fileSize: number
+    siteId: number; ftpHost: string; mimeType: string; fileSize: number
 }) {
-    const { account, tempPath, fileName, folderId, siteId, mimeType, fileSize } = opts
+    const { account, tempPath, fileName, folderId, siteId, ftpHost, mimeType, fileSize } = opts
 
     const folderPath = await folderRepo.realPath(folderId)
     const workingDir = `${account.homePath}/${folderPath}`.replace(/\/+/g, '/')
-    const finalPath = `${workingDir}/${fileName}`.replace(/\/+/g, '/')
 
-    const ftpLib = new FtpLibrary(siteId)
+    const ftpRead = new FtpLibrary(siteId, ftpHost)
+    const ftpWrite = new FtpLibrary(siteId, ftpHost)
     try {
-        await ftpLib.connect()
-        await ftpLib.ensureDir(workingDir)
-        await ftpLib.rename(tempPath, finalPath)
-        logger.info(`[tus] file done: ${finalPath}`)
+        await Promise.all([ftpRead.connect(), ftpWrite.connect()])
+        const lastSlash = tempPath.lastIndexOf('/')
+        const buffer = await ftpRead.downloadStream(
+            tempPath.substring(0, lastSlash),
+            tempPath.substring(lastSlash + 1),
+        )
+        await ftpWrite.uploadFile(workingDir, { buffer, fileName })
+        logger.info(`[tus] file done: ${workingDir}/${fileName}`)
     } finally {
-        ftpLib.close()
+        ftpWrite.close()
+        // ftpRead closes itself when the download stream ends or errors
     }
 
     try {
@@ -103,7 +109,7 @@ async function handleSingleFileUpload(opts: {
             where: { folderId_fileName: { folderId, fileName } },
             create: {
                 fileName, folderId, accountId: account.id, fileSize, fileType: mimeType,
-                source: { ftpHost: env.FTP_HOST, ftpPort: siteId, remotePath: workingDir } as any,
+                source: { ftpHost, ftpPort: siteId, remotePath: workingDir } as any,
                 recordStatus: 'ACTIVE',
             },
             update: { fileSize, fileType: mimeType, updatedAt: new Date() },
@@ -118,9 +124,9 @@ async function handleSingleFileUpload(opts: {
 async function handleFolderFileUpload(opts: {
     account: { id: string; username: string; homePath: string }
     tempPath: string; fileName: string; folderId: string | undefined
-    siteId: number; mimeType: string; fileSize: number; relativePath: string
+    siteId: number; ftpHost: string; mimeType: string; fileSize: number; relativePath: string
 }) {
-    const { account, tempPath, fileName, folderId, siteId, mimeType, fileSize, relativePath } = opts
+    const { account, tempPath, fileName, folderId, siteId, ftpHost: metaFtpHost, mimeType, fileSize, relativePath } = opts
 
     let workingDir: string
     let rootFolder: { id: string; name: string } | undefined
@@ -135,8 +141,10 @@ async function handleFolderFileUpload(opts: {
         rootFolder = { id: folder.id, name: folder.folderName }
     } else {
         workingDir = account.homePath
-        source = { ftpHost: env.FTP_HOST, ftpPort: siteId, remotePath: account.homePath }
+        source = { ftpHost: metaFtpHost, ftpPort: siteId, remotePath: account.homePath }
     }
+    // source.ftpHost might be overridden by the folder's stored host; resolve effective host
+    const ftpHost = source.ftpHost ?? metaFtpHost
 
     const workingDirSegments = workingDir
         .replace(/\/+/g, '/').replace(/^\/|\/$/g, '').split('/').filter(Boolean)
@@ -156,18 +164,23 @@ async function handleFolderFileUpload(opts: {
 
     logger.info(`[tus] folder file: ${ftpPath}/${fileName}`)
 
-    const finalPath = `${ftpPath}/${fileName}`.replace(/\/+/g, '/')
-    const ftpLib = new FtpLibrary(siteId)
+    const ftpRead = new FtpLibrary(siteId, ftpHost)
+    const ftpWrite = new FtpLibrary(siteId, ftpHost)
     try {
-        await ftpLib.connect()
-        await ftpLib.ensureDir(ftpPath)
-        await ftpLib.rename(tempPath, finalPath)
-        saga.track({ type: 'ftp', dirPath: ftpPath, fileName, siteId })
+        await Promise.all([ftpRead.connect(), ftpWrite.connect()])
+        const lastSlash = tempPath.lastIndexOf('/')
+        const buffer = await ftpRead.downloadStream(
+            tempPath.substring(0, lastSlash),
+            tempPath.substring(lastSlash + 1),
+        )
+        await ftpWrite.uploadFile(ftpPath, { buffer, fileName })
+        saga.track({ type: 'ftp', dirPath: ftpPath, fileName, siteId, ftpHost })
     } catch (err) {
         await saga.rollback()
         throw err
     } finally {
-        ftpLib.close()
+        ftpWrite.close()
+        // ftpRead closes itself when the download stream ends or errors
     }
 
     try {

@@ -5,8 +5,16 @@ import { prismaProxy } from './prisma.js'
 import { env } from '../config.js'
 import logger from './logger.js'
 
-export const TUS_FTP_TEMP_DIR = process.env.TUS_FTP_TEMP_DIR ?? '/tus-temp'
+// Default to a relative path — resolveFtpPath() will anchor it under FTP_HOME_DIR
+export const TUS_FTP_TEMP_DIR = process.env.TUS_FTP_TEMP_DIR ?? 'tus-temp'
 const DEFAULT_EXPIRY_MS = 24 * 60 * 60 * 1000
+
+// Mirrors the same logic in FtpLibrary.uploadFile: absolute paths pass through,
+// relative paths are anchored under FTP_HOME_DIR.
+export function resolveFtpPath(path: string): string {
+    if (path.startsWith('/')) return path
+    return `${env.FTP_HOME_DIR}/${path}`.replace(/\/+/g, '/')
+}
 
 export class FtpDataStore extends DataStore {
     private readonly tempDir: string
@@ -19,10 +27,10 @@ export class FtpDataStore extends DataStore {
         this.extensions = ['creation', 'termination', 'expiration']
     }
 
-    private async openFtp(siteId: number): Promise<Client> {
+    private async openFtp(siteId: number, ftpHost: string): Promise<Client> {
         const client = new Client()
         await client.access({
-            host: env.FTP_HOST,
+            host: ftpHost,
             port: siteId,
             user: env.FTP_USERNAME,
             password: env.FTP_PASSWORD,
@@ -35,11 +43,13 @@ export class FtpDataStore extends DataStore {
     // create() only writes to DB — FTP file is created lazily on first write()
     async create(upload: Upload): Promise<Upload> {
         const siteId = Number(upload.metadata?.siteId ?? 0)
+        const ftpHost = upload.metadata?.ftpHost ?? env.FTP_HOST
         await prismaProxy.tusUpload.create({
             data: {
                 id: upload.id,
                 siteId,
-                tempPath: `${this.tempDir}/${upload.id}`,
+                ftpHost,
+                tempPath: resolveFtpPath(`${this.tempDir}/${upload.id}`),
                 size: upload.size ?? null,
                 offset: 0,
                 metadata: (upload.metadata ?? null) as any,
@@ -51,15 +61,18 @@ export class FtpDataStore extends DataStore {
 
     async write(stream: Readable, id: string, offset: number): Promise<number> {
         const record = await prismaProxy.tusUpload.findUniqueOrThrow({ where: { id } })
-        const ftp = await this.openFtp(record.siteId)
+        const ftp = await this.openFtp(record.siteId, record.ftpHost)
+        // Use the absolute path stored in DB — never rely on CWD after ensureDir
+        const absFile = record.tempPath
+        const absDir = absFile.substring(0, absFile.lastIndexOf('/'))
 
         try {
-            // ensureDir creates the temp dir if missing and sets CWD to it
-            await ftp.ensureDir(this.tempDir)
+            // Create the temp dir if it doesn't exist (CWD side-effect is irrelevant)
+            await ftp.ensureDir(absDir)
 
             let currentSize = 0
             try {
-                currentSize = await ftp.size(id)
+                currentSize = await ftp.size(absFile)
             } catch {
                 currentSize = 0
             }
@@ -76,12 +89,12 @@ export class FtpDataStore extends DataStore {
 
             // offset === 0: STOR (creates/overwrites), offset > 0: APPE
             if (offset === 0) {
-                await ftp.uploadFrom(stream, id)
+                await ftp.uploadFrom(stream, absFile)
             } else {
-                await ftp.appendFrom(stream, id)
+                await ftp.appendFrom(stream, absFile)
             }
 
-            const newOffset = await ftp.size(id)
+            const newOffset = await ftp.size(absFile)
             await prismaProxy.tusUpload.update({ where: { id }, data: { offset: newOffset } })
             return newOffset
         } finally {
@@ -105,13 +118,12 @@ export class FtpDataStore extends DataStore {
         const record = await prismaProxy.tusUpload.findUnique({ where: { id } })
         if (!record) return
 
-        const ftp = await this.openFtp(record.siteId).catch(() => null)
+        const ftp = await this.openFtp(record.siteId, record.ftpHost).catch(() => null)
         if (ftp) {
             try {
-                await ftp.ensureDir(this.tempDir)
-                await ftp.remove(id)
+                await ftp.remove(record.tempPath)
             } catch {
-                // file was already renamed to final path or never created
+                // file was already moved to final path or never created
             } finally {
                 ftp.close()
             }

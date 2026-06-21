@@ -94,7 +94,7 @@ export class RepositoryMedia implements IRepositoryMedia {
         /* execution — each file gets its own FtpLibrary to avoid shared-state races */
         const limitFtp = plimit(10)
         const promise = files.map(async (file) => limitFtp(async () => {
-            const ftpLib = new FtpLibrary(Number(site))
+            const ftpLib = new FtpLibrary(Number(site), source.ftpHost ?? env.FTP_HOST)
             try {
                 await ftpLib.connect()
                 const buffer = Readable.fromWeb(file.stream() as any)
@@ -114,7 +114,8 @@ export class RepositoryMedia implements IRepositoryMedia {
                 fileName: e.file.name,
                 fileSize: e.file.size,
                 fileType: e.file.type,
-                siteId: site
+                siteId: site,
+                ftpHost: source.ftpHost ?? env.FTP_HOST,
             }
 
             return await this.fileRepo.newFile(c, fileBody)
@@ -166,7 +167,7 @@ export class RepositoryMedia implements IRepositoryMedia {
             })
             workingDir = homePath
             source = {
-                ftpHost: env.FTP_HOST,
+                ftpHost: c.req.query('ftpHost') ?? env.FTP_HOST,
                 ftpPort: siteId,
                 remotePath: homePath
             }
@@ -230,7 +231,7 @@ export class RepositoryMedia implements IRepositoryMedia {
 
         /* ── saga: one instance covers ALL files in this request ── */
         const saga = new UploadSaga()
-        const ftpLibrary = new FtpLibrary(siteId)
+        const ftpLibrary = new FtpLibrary(siteId, source.ftpHost ?? env.FTP_HOST)
 
         // Connect once; uploadFile no longer closes the connection
         await ftpLibrary.connect()
@@ -254,7 +255,7 @@ export class RepositoryMedia implements IRepositoryMedia {
                 // 3. Upload new FTP file
                 const buffer = Readable.fromWeb(file.stream() as any)
                 await ftpLibrary.uploadFile(ftpPath, { buffer, fileName })
-                saga.track({ type: 'ftp', dirPath: ftpPath, fileName, siteId })
+                saga.track({ type: 'ftp', dirPath: ftpPath, fileName, siteId, ftpHost: source.ftpHost ?? env.FTP_HOST })
 
                 // 4. Find unique file-folder
                 const existingFile = await prismaProxy.file.findUnique({
@@ -315,7 +316,7 @@ export class RepositoryMedia implements IRepositoryMedia {
      */
     async stream(c: Context): Promise<Response> {
         const body = c.get('validatedBody') as MediaStreamDto
-        const ftpLibrary = new FtpLibrary(body.site)
+        const ftpLibrary = new FtpLibrary(body.site, body.ftpHost ?? env.FTP_HOST)
 
         try {
             await ftpLibrary.connect()

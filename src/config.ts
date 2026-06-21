@@ -55,6 +55,7 @@ const config = {
         default: 'implicit'
     }),
     FTP_HOME_DIR: str({ default: '' }),
+    TUS_FTP_TEMP_DIR: str({ default: '' }),
 
     GOOGLE_CLIENT_ID: str(),
     GOOGLE_CLIENT_SECRET: str(),

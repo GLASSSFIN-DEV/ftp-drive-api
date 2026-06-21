@@ -27,6 +27,10 @@ export class FolderNewDto {
     @IsNumber()
     @IsPositive()
     siteId!: number;
+
+    @IsString()
+    @IsOptional()
+    ftpHost?: string;
 }
 
 export class FolderChangeDto {
@@ -55,4 +59,8 @@ export class FolderChangeDto {
     @IsNumber()
     @IsPositive()
     siteId!: number;
+
+    @IsString()
+    @IsOptional()
+    ftpHost?: string;
 }

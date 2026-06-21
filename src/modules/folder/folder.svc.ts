@@ -134,7 +134,8 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
-        const ftp = new FtpLibrary(obj.siteId)
+        const ftpHost = obj.ftpHost ?? env.FTP_HOST
+        const ftp = new FtpLibrary(obj.siteId, ftpHost)
         try {
             let parentPath = ''
             await ftp.connect()
@@ -149,7 +150,7 @@ export class RepositoryFolder implements IRepositoryFolder {
 
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
-                    ftpHost: env.FTP_HOST,
+                    ftpHost,
                     ftpPort: obj.siteId,
                     remotePath: finalPath
                 }
@@ -207,7 +208,9 @@ export class RepositoryFolder implements IRepositoryFolder {
             messages: ['Folder name already exist!']
         })
 
-        const ftp = new FtpLibrary(obj.siteId)
+        const existSource = exist.source as ISource
+        const ftpHost = existSource?.ftpHost ?? obj.ftpHost ?? env.FTP_HOST
+        const ftp = new FtpLibrary(obj.siteId, ftpHost)
         try {
             await ftp.connect()
             const currentDir = await this.realPath(exist.id)
@@ -235,7 +238,7 @@ export class RepositoryFolder implements IRepositoryFolder {
             try {
                 await prismaProxy.$transaction(async (tx) => {
                     const source: ISource = {
-                        ftpHost: env.FTP_HOST,
+                        ftpHost,
                         ftpPort: obj.siteId,
                         remotePath: lastWorkDir, newWorkDir
                     }
@@ -310,7 +313,7 @@ export class RepositoryFolder implements IRepositoryFolder {
         const folderIds = await this.getNestedFolders(id, account.id)
         const fileIds = await prismaProxy.file.findMany({ where: { folderId: { in: folderIds }, accountId: account.id } })
 
-        const ftp = new FtpLibrary(source.ftpPort)
+        const ftp = new FtpLibrary(source.ftpPort, source.ftpHost ?? env.FTP_HOST)
         try {
             await ftp.connect()
             const currentDir = await this.realPath(id)

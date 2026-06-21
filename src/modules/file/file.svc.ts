@@ -92,7 +92,7 @@ export class RepositoryFile implements IRepositoryFile {
 
             await prismaProxy.$transaction(async (tx) => {
                 const source: ISource = {
-                    ftpHost: env.FTP_HOST,
+                    ftpHost: obj.ftpHost ?? env.FTP_HOST,
                     ftpPort: obj.siteId,
                     remotePath: workingDir,
                 }
@@ -162,7 +162,9 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['File name already exist!']
         })
 
-        const ftp = new FtpLibrary(obj.siteId)
+        const existSource = exist.source as ISource
+        const ftpHost = existSource?.ftpHost ?? obj.ftpHost ?? env.FTP_HOST
+        const ftp = new FtpLibrary(obj.siteId, ftpHost)
         try {
             await ftp.connect()
             const currentDir = await this.folderRepo.realPath(folder.id)
@@ -189,7 +191,7 @@ export class RepositoryFile implements IRepositoryFile {
             try {
                 await prismaProxy.$transaction(async (tx) => {
                     const source: ISource = {
-                        ftpHost: env.FTP_HOST,
+                        ftpHost,
                         ftpPort: obj.siteId,
                         remotePath: lastWorkDir, newWorkDir,
                         fileHash: fileHash as FTPResponse
@@ -255,7 +257,7 @@ export class RepositoryFile implements IRepositoryFile {
             messages: ['Your folder source not defined!']
         })
 
-        const ftp = new FtpLibrary(source.ftpPort)
+        const ftp = new FtpLibrary(source.ftpPort, source.ftpHost ?? env.FTP_HOST)
         try {
             await ftp.connect()
             const currentDir = await this.folderRepo.realPath(exist.folderId)

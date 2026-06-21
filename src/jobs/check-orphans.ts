@@ -1,5 +1,6 @@
 import { FtpLibrary } from "../lib/ftp.js";
 import { prismaProxy } from "../lib/prisma.js";
+import { env } from "../config.js";
 import { homePath } from "../middleware/auth.validator.js";
 import { RepositoryFolder, ISource } from "../modules/folder/folder.svc.js";
 
@@ -48,35 +49,42 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
         ftpFilesMissingInDb: []
     }
 
-    const folderBySite = new Map<number, Array<{ folder: typeof dbFolders[0]; path: string }>>()
-    
+    type SiteKey = string  // `${ftpHost}:${ftpPort}`
+    type SiteConn = { ftpHost: string; siteId: number }
+
+    const folderBySite = new Map<SiteKey, { conn: SiteConn; items: Array<{ folder: typeof dbFolders[0]; path: string }> }>()
+
     for (const folder of dbFolders) {
         const source = folder.source as unknown as ISource
         const siteId = source?.ftpPort
         if (!siteId) continue
+        const ftpHost = source?.ftpHost ?? env.FTP_HOST
+        const key: SiteKey = `${ftpHost}:${siteId}`
 
         const realPath = await folderRepo.realPath(folder.id, folderMap)
         const homeDir = homePath(folder.account.username)
         const fullPath = `${homeDir}/${realPath}`.replace(/\/+/g, '/')
 
-        if (!folderBySite.has(siteId)) folderBySite.set(siteId, [])
-        folderBySite.get(siteId)!.push({ folder, path: fullPath })
+        if (!folderBySite.has(key)) folderBySite.set(key, { conn: { ftpHost, siteId }, items: [] })
+        folderBySite.get(key)!.items.push({ folder, path: fullPath })
     }
 
-    const fileBySite = new Map<number, Array<{ file: typeof dbFiles[0]; path: string }>>()
-    
+    const fileBySite = new Map<SiteKey, { conn: SiteConn; items: Array<{ file: typeof dbFiles[0]; path: string }> }>()
+
     for (const file of dbFiles) {
         const source = (file.folder?.source ?? file.source) as ISource
         const siteId = source?.ftpPort
         if (!siteId) continue
+        const ftpHost = source?.ftpHost ?? env.FTP_HOST
+        const key: SiteKey = `${ftpHost}:${siteId}`
 
         try {
             const realPath = await folderRepo.realPath(file.folderId, folderMap)
             const homeDir = homePath(file.account.username)
             const fullPath = `${homeDir}/${realPath}/${file.fileName}`.replace(/\/+/g, '/')
 
-            if (!fileBySite.has(siteId)) fileBySite.set(siteId, [])
-            fileBySite.get(siteId)!.push({ file, path: fullPath })
+            if (!fileBySite.has(key)) fileBySite.set(key, { conn: { ftpHost, siteId }, items: [] })
+            fileBySite.get(key)!.items.push({ file, path: fullPath })
         } catch {
             orphanedFiles.dbFilesMissingOnFtp.push({
                 id: file.id,
@@ -87,8 +95,8 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
     }
 
     const folderEntries = Array.from(folderBySite.entries())
-    for (const [siteId, folders] of folderEntries) {
-        const ftp = new FtpLibrary(siteId)
+    for (const [, { conn: { ftpHost, siteId }, items: folders }] of folderEntries) {
+        const ftp = new FtpLibrary(siteId, ftpHost)
         try {
             await ftp.connect()
 
@@ -131,8 +139,8 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
     }
 
     const fileEntries = Array.from(fileBySite.entries())
-    for (const [siteId, files] of fileEntries) {
-        const ftp = new FtpLibrary(siteId)
+    for (const [, { conn: { ftpHost, siteId }, items: files }] of fileEntries) {
+        const ftp = new FtpLibrary(siteId, ftpHost)
         try {
             await ftp.connect()
 

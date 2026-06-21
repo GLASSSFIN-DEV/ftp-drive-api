@@ -288,6 +288,7 @@ model TraceSpan {
 model TusUpload {
   id        String    @id
   siteId    Int
+  ftpHost   String    @default("")
   tempPath  String
   size      Int?
   offset    Int       @default(0)

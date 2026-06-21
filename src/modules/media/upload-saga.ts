@@ -5,7 +5,7 @@ import { prismaProxy } from "../../lib/prisma.js";
 type CompletedStep =
     | { type: 'folder'; id: string }
     | { type: 'file'; id: string }
-    | { type: 'ftp'; dirPath: string; fileName: string; siteId: number }
+    | { type: 'ftp'; dirPath: string; fileName: string; siteId: number; ftpHost: string }
 
 export class UploadSaga {
     private completed: CompletedStep[] = []
@@ -19,7 +19,7 @@ export class UploadSaga {
         for (const step of this.completed.reverse()) {
             try {
                 if (step.type === 'ftp') {
-                    const ftp = new FtpLibrary(step.siteId)
+                    const ftp = new FtpLibrary(step.siteId, step.ftpHost)
                     try {
                         await ftp.connect()
                         await ftp.removeFile(step.dirPath, step.fileName)
