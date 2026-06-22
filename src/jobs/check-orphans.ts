@@ -63,8 +63,7 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
 
         const realPath = await folderRepo.realPath(folder.id, folderMap)
         const homeDir = homePath(folder.account.username)
-        const fullPath = `${homeDir}/${realPath}`.replace(/\/+/g, '/')
-
+        const fullPath = `${env.FTP_HOME_DIR}/${homeDir}/${realPath}`.replace(/\/+/g, '/')
         if (!folderBySite.has(key)) folderBySite.set(key, { conn: { ftpHost, siteId }, items: [] })
         folderBySite.get(key)!.items.push({ folder, path: fullPath })
     }
@@ -81,7 +80,7 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
         try {
             const realPath = await folderRepo.realPath(file.folderId, folderMap)
             const homeDir = homePath(file.account.username)
-            const fullPath = `${homeDir}/${realPath}/${file.fileName}`.replace(/\/+/g, '/')
+            const fullPath = `${env.FTP_HOME_DIR}/${homeDir}/${realPath}/${file.fileName}`.replace(/\/+/g, '/')
 
             if (!fileBySite.has(key)) fileBySite.set(key, { conn: { ftpHost, siteId }, items: [] })
             fileBySite.get(key)!.items.push({ file, path: fullPath })
@@ -101,10 +100,8 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
             await ftp.connect()
 
             const dbFolderPaths = new Set<string>(folders.map(f => f.path))
-            
+
             for (const { folder, path } of folders) {
-                // Fix #13: use dirExists (list the directory) instead of findFile(path, '.')
-                // which always threw because '.' is never returned by FTP LIST responses.
                 const exists = await ftp.dirExists(path)
                 if (!exists) {
                     orphanedFiles.dbFoldersMissingOnFtp.push({
@@ -117,22 +114,25 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
 
             const allFtpEntries = await ftp.listAllFiles('/')
             const allFtpPaths = new Set<string>(allFtpEntries.map(e => e.path))
-            
+
             for (const ftpPath of Array.from(allFtpPaths)) {
-                const homePrefix = homePath('')
-                if (!ftpPath.includes(homePrefix)) continue
-                
+                const homeBase = env.FTP_HOME_DIR
+                if (homeBase && !ftpPath.startsWith(homeBase)) continue
+
                 const dbPathsArray = Array.from(dbFolderPaths)
                 const isDirectMatch = dbPathsArray.includes(ftpPath)
                 const isSubfolder = dbPathsArray.some(dbPath => ftpPath.startsWith(dbPath + '/'))
-                
-                if (!isDirectMatch && !isSubfolder) {
+                const isAncestor = dbPathsArray.some(dbPath => dbPath.startsWith(ftpPath + '/'))
+
+                if (!isDirectMatch && !isSubfolder && !isAncestor) {
                     const isDirectory = allFtpEntries.find(e => e.path === ftpPath)?.isDirectory
                     if (isDirectory) {
                         orphanedFiles.ftpFoldersMissingInDb.push({ path: ftpPath, siteId })
                     }
                 }
             }
+        } catch (err) {
+            console.error(`[check-orphans] skipping folder check for site ${siteId}@${ftpHost} — FTP unreachable:`, err)
         } finally {
             ftp.close()
         }
@@ -161,11 +161,15 @@ export async function checkOrphans(): Promise<OrphanCheckResult> {
                 }
             }
 
+            const homeBase = env.FTP_HOME_DIR
             for (const ftpPath of Array.from(ftpFilePaths)) {
+                if (homeBase && !ftpPath.startsWith(homeBase)) continue
                 if (!dbFilePaths.has(ftpPath)) {
                     orphanedFiles.ftpFilesMissingInDb.push({ path: ftpPath, siteId })
                 }
             }
+        } catch (err) {
+            console.error(`[check-orphans] skipping file check for site ${siteId}@${ftpHost} — FTP unreachable:`, err)
         } finally {
             ftp.close()
         }
