@@ -135,6 +135,70 @@ export const definition = {
         },
         required: ["page", "pageSize"],
       },
+      FolderSearchResult: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+          folderName: { type: 'string', example: 'Laporan Keuangan' },
+          parentId: { type: 'integer', nullable: true, example: null },
+          createdAt: { type: 'string', format: 'date-time' },
+          rank: { type: 'number', format: 'float', example: 0.75 },
+        },
+        required: ['id', 'folderName', 'createdAt', 'rank'],
+      },
+      FileSearchResult: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' },
+          fileName: { type: 'string', example: 'laporan-q1-2024.pdf' },
+          folderId: { type: 'string', format: 'uuid', example: 'c3d4e5f6-a7b8-9012-cdef-123456789012' },
+          pageNumbers: {
+            type: 'array',
+            items: { type: 'integer' },
+            example: [1, 3, 7],
+            description: 'All pages where the keyword was found',
+          },
+          snippetPageNumber: { type: 'integer', nullable: true, example: 3, description: 'Page of the highest-ranked snippet' },
+          snippet: { type: 'string', nullable: true, example: 'Lorem <mark>laporan</mark> keuangan sit amet', description: 'HTML snippet with highlighted keywords' },
+          rank: { type: 'number', format: 'float', example: 1.25 },
+        },
+        required: ['id', 'fileName', 'folderId', 'pageNumbers', 'rank'],
+      },
+      FtsSearchResponse: {
+        type: 'object',
+        properties: {
+          suggestedQuery: { type: 'string', nullable: true, example: 'laporan keuangan', description: 'Alternate query suggested when top result confidence is low' },
+          searchedQuery: { type: 'string', nullable: true, example: 'laporan keuangan', description: 'Corrected query actually used when original returned no results' },
+          folders: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/FolderSearchResult' },
+          },
+          files: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/FileSearchResult' },
+          },
+        },
+        required: ['folders', 'files'],
+      },
+      FtsSuggestItem: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', example: 'Laporan Keuangan 2024' },
+          type: { type: 'string', enum: ['folder', 'file'], example: 'file' },
+          score: { type: 'number', format: 'float', example: 0.6, description: 'Word-similarity score (0–1)' },
+        },
+        required: ['text', 'type', 'score'],
+      },
+      FtsSuggestResponse: {
+        type: 'object',
+        properties: {
+          suggestions: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/FtsSuggestItem' },
+          },
+        },
+        required: ['suggestions'],
+      },
       ItemPagination: {
         type: "object",
         properties: {
@@ -160,6 +224,7 @@ export const definition = {
     { name: "File", description: "File related endpoints" },
     { name: "Sharing", description: "Sharing related endpoints" },
     { name: "Debug", description: "Debug related endpoints" },
+    { name: "FTS", description: "Full-text search related endpoints" },
   ],
   paths: {
     // Auth
@@ -1436,6 +1501,200 @@ export const definition = {
         },
       },
     },
+    // FTS
+    '/v1/fts/search': {
+      get: {
+        tags: ['FTS'],
+        summary: 'Full-Text Search',
+        description: 'Runs a PostgreSQL full-text search (Indonesian language) across folders and file contents. When results have a low confidence score the response includes a `suggestedQuery`. When there are no results at all the engine attempts query correction and retries, returning `searchedQuery` with the corrected results.',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'keyword',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Search keyword. Returns empty arrays when omitted or blank.',
+          },
+          {
+            name: 'page',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 1 },
+            description: 'Page number (default: 1)',
+          },
+          {
+            name: 'pageSize',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 25 },
+            description: 'Items per page (default: 25)',
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Search results. `suggestedQuery` is present when confidence is low; `searchedQuery` is present when the original query returned nothing and was auto-corrected.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FtsSearchResponse' },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/fts/query-like': {
+      get: {
+        tags: ['FTS'],
+        summary: 'LIKE Search',
+        description: 'Case-insensitive LIKE search across folder names, file names, and parsed file content (FileVector). Matches are merged and ranked: file-name matches score 2, additional content-page hits each add 1. Returns up to 10 results by default.',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'keyword',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Search keyword. Returns empty arrays when omitted or blank.',
+          },
+          {
+            name: 'page',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 1 },
+            description: 'Page number (default: 1)',
+          },
+          {
+            name: 'pageSize',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 25 },
+            description: 'Items per page (default: 25)',
+          },
+        ],
+        responses: {
+          200: {
+            description: 'LIKE search results',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    folders: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          folderName: { type: 'string', example: 'Laporan 2024' },
+                          createdAt: { type: 'string', format: 'date-time' },
+                        },
+                        required: ['id', 'folderName', 'createdAt'],
+                      },
+                    },
+                    files: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/FileSearchResult' },
+                    },
+                  },
+                  required: ['folders', 'files'],
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/v1/fts/suggest': {
+      get: {
+        tags: ['FTS'],
+        summary: 'Search Suggestions',
+        description: 'Returns autocomplete-style suggestions based on PostgreSQL trigram word-similarity (`<%` operator) against folder names and file names. The default similarity threshold is 0.4 and up to 10 suggestions are returned.',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'keyword',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Partial keyword to get suggestions for. Returns empty array when omitted or blank.',
+          },
+          {
+            name: 'page',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 1 },
+            description: 'Page number (default: 1)',
+          },
+          {
+            name: 'pageSize',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 25 },
+            description: 'Items per page (default: 25)',
+          },
+        ],
+        responses: {
+          200: {
+            description: 'List of suggestions ordered by word-similarity score descending',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FtsSuggestResponse' },
+              },
+            },
+          },
+          400: {
+            description: 'Bad Request',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+
     '/v1/debug/orphans': {
       get: {
         tags: ['Debug'],

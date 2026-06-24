@@ -316,6 +316,7 @@ model FileVector {
   createdAt  DateTime                    @default(now())
   intent     Json[]                      @default([])
   contentFts Unsupported("tsvector")?
+  pageNumber Int
 
   file File @relation(fields: [fileId], references: [id])
 

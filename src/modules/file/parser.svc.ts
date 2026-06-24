@@ -103,7 +103,7 @@ export class FileParserRepository {
             prisma.fileVector.deleteMany({ where: { fileId } }),
             ...processed.map(({ id, chunk, vector, intent }) =>
                 prisma.$executeRaw`
-                    INSERT INTO "drive"."FileVector" (id, "fileId", content, metadata, embedding, intent, "createdAt")
+                    INSERT INTO "drive"."FileVector" (id, "fileId", content, metadata, embedding, intent, "pageNumber", "createdAt")
                     VALUES (
                         ${id},
                         ${fileId},
@@ -118,6 +118,7 @@ export class FileParserRepository {
                         })}::jsonb,
                         ${vector}::vector,
                         ARRAY(SELECT jsonb_array_elements(${JSON.stringify(intent)}::jsonb)),
+                        ${chunk.pages[0]},
                         now()
                     )
                 `
