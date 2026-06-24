@@ -4,8 +4,9 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
@@ -173,7 +174,9 @@ model File {
   folder        Folder        @relation(fields: [folderId], references: [id])
   fileSharings  FileSharing[]
   fileHistories FileHistory[]
+  fileVectors   FileVector[]
 
+  @@unique([folderId, fileName])
   @@index([folderId])
   @@index([accountId])
   @@index([recordStatus])
@@ -183,8 +186,6 @@ model File {
   @@index([fileName])
   @@index([folderId, fileName])
   @@index([accountId, folderId])
-  
-  @@unique([folderId, fileName])
   @@schema("drive")
 }
 
@@ -298,5 +299,29 @@ model TusUpload {
 
   @@index([expiresAt])
   @@index([createdAt(sort: Desc)])
+  @@schema("drive")
+}
+
+model FileVector {
+  id        String                      @id @default(uuid())
+  fileId    String
+  content   String
+  metadata  Json
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime                    @default(now())
+  intent    Json[]                      @default([])
+
+  file File @relation(fields: [fileId], references: [id])
+
+  @@index([fileId])
+  @@schema("drive")
+}
+
+model Prompt {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  content   String
+  createdAt DateTime @default(now())
+
   @@schema("drive")
 }

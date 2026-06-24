@@ -1,5 +1,5 @@
 import { configDotenv } from "dotenv";
-import { bool, cleanEnv, json, makeValidator, num, str } from "envalid";
+import { bool, cleanEnv, makeValidator, num, str } from "envalid";
 
 configDotenv({ quiet: true })
 
@@ -60,6 +60,14 @@ const config = {
     GOOGLE_CLIENT_ID: str(),
     GOOGLE_CLIENT_SECRET: str(),
     GOOGLE_REDIRECT_URL: str(),
+
+    REDIS_HOST: str({ default: 'localhost' }),
+    REDIS_PORT: num({ default: 6378 }),
+    REDIS_PASSWORD: str(),
+
+    OLLAMA_HOST: str({ default: 'http://localhost:11434' }),
+    OLLAMA_MODEL: str({ default: 'nomic-embed-text' }),
+    OLLAMA_CHAT_MODEL: str({ default: 'llama3.2' }),
 }
 
 export const env = cleanEnv(process.env, config)

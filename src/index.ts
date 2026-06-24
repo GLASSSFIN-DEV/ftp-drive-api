@@ -12,15 +12,9 @@ import { errorHandler } from './middleware/err.handler.js'
 import { useTelemetry } from './middleware/logger.middleware.js'
 import modules from './modules/index.js'
 import inngestRoute from './modules/inngest.js'
+import { redis } from './lib/redis.js'
 
-type HonoVariable = {
-  Variables: {
-    traceId: string;
-    timingVariable: TimingVariables
-  }
-}
-
-const app = new Hono<HonoVariable>()
+const app = new Hono()
 
 app.onError(errorHandler())
 app.use('*', contextStorage())
@@ -31,9 +25,10 @@ app.get('/docs/openapi.json', (c) => {
 
 app.use('*', async (c, next) => {
   const traceId: string = v7()
+  c.set('redis', redis)
   c.set('traceId', traceId)
   c.header('x-trace-id', traceId)
-
+  
   await next()
 })
 

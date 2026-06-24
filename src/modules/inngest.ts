@@ -3,16 +3,16 @@ import { Hono }                   from 'hono'
 import { serve }                  from 'inngest/hono'
 import { inngest } from '../lib/inngest-client.js'
 import { reconcileOrphanedFiles } from '../jobs/reconcile-orphaned-files.js'
+import { parsePdfJob } from '../jobs/parse-pdf.js'
 
 const inngestRoute = new Hono()
 
-// ✅ correct — serve() returns a handler, not { GET, POST, PUT }
 inngestRoute.on(
     ['GET', 'PUT', 'POST'],
     '/api/inngest',
     serve({
         client:    inngest,
-        functions: [reconcileOrphanedFiles],
+        functions: [reconcileOrphanedFiles, parsePdfJob],
     })
 )
 

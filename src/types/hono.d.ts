@@ -1,4 +1,6 @@
 import { JsonValue } from "@prisma/client/runtime/client";
+import { TimingVariables } from "hono/timing";
+import { Redis } from "ioredis";
 
 export interface IAccount {
     id: string;
@@ -17,6 +19,8 @@ declare module 'hono' {
         account: IAccount;
         validatedBody: unknown;
         traceId: string;
+        redis: Redis;
+        timingVariable: TimingVariables
     }
 }
 
