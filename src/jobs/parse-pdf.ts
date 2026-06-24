@@ -1,5 +1,5 @@
 import { inngest } from '../lib/inngest-client.js';
-import { FileParserRepository, IQueueFile } from '../modules/file/parser.svc.js';
+import { RepositoryFileParser, IQueueFile } from '../modules/file/parser.svc.js';
 
 export const parsePdfJob = inngest.createFunction(
     {
@@ -10,7 +10,7 @@ export const parsePdfJob = inngest.createFunction(
     },
     async ({ event, step, logger }) => {
         const file = event.data as IQueueFile;
-        const repo = new FileParserRepository();
+        const repo = new RepositoryFileParser();
 
         // Step 1: FTP download + PDF parsing (Inngest checkpoints result before step 2)
         const parsed = await step.run('download-and-parse', () =>
