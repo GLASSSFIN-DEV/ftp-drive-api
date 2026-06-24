@@ -4,9 +4,11 @@ import { UuidDto, PageQueryDto } from '../../dto/query.dto.js'
 import Guard from '../../middleware/auth.validator.js'
 import Validate from '../../middleware/req.validator.js'
 import { RepositoryFile } from './file.svc.js'
+import { RepositoryFileParser } from './parser.svc.js'
 
 const router = new Hono()
 const fileService = new RepositoryFile()
+const fileParserService = new RepositoryFileParser()
 
 router.put('/file/:id', Validate.for(UuidDto, 'param'), Validate.for(FileChangeDto), Guard.validate(), async (c) => {
     const value = await fileService.changeFile(c)
@@ -30,6 +32,10 @@ router.get('/my-files/:id', Validate.for(UuidDto, 'param'), Guard.validate(), as
 })
 router.get('/file/history/:id', Validate.for(UuidDto, 'param'), Guard.validate(), async (c) => {
     const value = await fileService.versions(c)
+    return c.json(value)
+})
+router.get('/file-parse', Guard.validate(), async (c) => {
+    const value = await fileParserService.pdfParse(c)
     return c.json(value)
 })
 

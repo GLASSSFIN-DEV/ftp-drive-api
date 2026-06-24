@@ -1027,6 +1027,47 @@ export const definition = {
       },
     },
 
+    '/v1/file-parse': {
+      get: {
+        tags: ['File'],
+        summary: 'Trigger PDF Parse',
+        description: 'Enqueues all active PDF files for parsing. For each file, an Inngest event (`drive/pdf.parse.requested`) is fired — the worker then downloads the file from FTP, chunks and embeds it, and persists the vectors to `FileVector`. Returns immediately without waiting for the parse to complete.',
+        security: [{ BearerAuth: [] }],
+        responses: {
+          200: {
+            description: 'Files successfully enqueued',
+            content: {
+              'application/json': {
+                schema: {
+                  allOf: [
+                    { $ref: '#/components/schemas/OkResponse' },
+                    {
+                      type: 'object',
+                      properties: {
+                        messages: {
+                          type: 'array',
+                          items: { type: 'string' },
+                          example: ['Insert 12 file(s) into queue to parse'],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FailResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+
     // Media
     '/v1/media/upload/{id}': {
       post: {

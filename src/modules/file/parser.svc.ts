@@ -19,7 +19,7 @@ export interface IQueueFile {
     remotePath: string;
 }
 
-export class FileParserRepository {
+export class RepositoryFileParser {
     private readonly parser = new FileParser()
 
     async pdfParse(_c: Context): Promise<IOkResponse> {

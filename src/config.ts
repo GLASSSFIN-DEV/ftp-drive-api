@@ -63,7 +63,6 @@ const config = {
 
     REDIS_HOST: str({ default: 'localhost' }),
     REDIS_PORT: num({ default: 6378 }),
-    REDIS_PASSWORD: str(),
 
     OLLAMA_HOST: str({ default: 'http://localhost:11434' }),
     OLLAMA_MODEL: str({ default: 'nomic-embed-text' }),

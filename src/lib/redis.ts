@@ -16,7 +16,7 @@ function createRedisClient(): Redis {
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     maxRetriesPerRequest: null,
-    password: env.REDIS_PASSWORD,
+    password: process.env.REDIS_PASSWORD,
     tls: REDIS_CERT ? { cert: fs.readFileSync(path.resolve(__dirname, REDIS_CERT)) } : undefined,
   });
 
